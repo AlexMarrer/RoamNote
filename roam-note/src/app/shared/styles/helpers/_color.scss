@@ -1,0 +1,8 @@
+@use "../abstract/variables/color";
+@forward "../abstract/variables/color";
+@forward "../abstract/function/color" with (
+  $data: (
+    base-colors: color.$base-colors,
+    color-overlay-map: color.$color-overlay-map,
+  )
+);

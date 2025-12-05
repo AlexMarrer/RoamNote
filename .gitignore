@@ -26,3 +26,16 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+
+# Android Build Dateien
+roam-note/android/build/
+roam-note/android/app/build/
+roam-note/android/.gradle/
+roam-note/android/local.properties
+roam-note/android/capacitor-cordova-android-plugins/build/
+
+# Supabase temp
+roam-note/supabase/.temp/
+
+# Angular Build Output
+roam-note/www/

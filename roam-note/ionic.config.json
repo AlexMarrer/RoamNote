@@ -1,0 +1,7 @@
+{
+  "name": "roam-note",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "angular-standalone"
+}

@@ -1,0 +1,88 @@
+@use "sass:map";
+@use "sass:list";
+@use "sass:color";
+
+$data: () !default;
+
+$required-key: (base-colors, color-overlay-map);
+
+@function check-for-key($data, $keys) {
+  $has-ata-key-set: list.length($data) > 0;
+  @if $has-ata-key-set {
+    @each $key in $keys {
+      @if not map.has-key($data, $key) {
+        @error "Missing key: #{$key} in #{$data}";
+      }
+    }
+    @return true;
+  } @else {
+    @error "Input Variable '$data' is empty";
+  }
+}
+
+$has-key: check-for-key($data, $required-key);
+
+@if not $has-key {
+  @error "Missing required keys: " $required-key;
+}
+
+$base-colors-data: map.get($data, base-colors);
+$color-overlay-map-data: map.get($data, color-overlay-map);
+
+@function get($theme-name: null, $overlay: 500, $valueType: background-color) {
+  @if map.has-key($base-colors-data, $theme-name) {
+    @if not $theme-name {
+      $theme-name: var(--current-theme);
+    }
+
+    $theme-definitions: set-theme($base-colors-data, $color-overlay-map-data);
+    $color-map: map.get($theme-definitions, $theme-name);
+
+    @if $overlay {
+      $color: map.get(map.get($color-map, $overlay), $valueType);
+      @return $color;
+    } @else {
+      @return $color-map;
+    }
+  } @else {
+    @error $theme-name "is not valid theme in " map.keys($base-colors-data);
+  }
+}
+
+@function set-theme($base-colors, $color-overlay-map) {
+  $color-map: ();
+  $theme-definitions: ();
+
+  @each $color-name, $base-color-value in $base-colors {
+    @each $lightness-name, $lightness-value in $color-overlay-map {
+      $opacity-value: map.get($lightness-value, o);
+      $opacity-color: map.get($lightness-value, oc);
+
+      $background-color: rgba-to-rgb(
+        rgba($base-color-value, $opacity-value),
+        $opacity-color
+      );
+
+      $theme-data: (
+        background-color: $background-color,
+      );
+      $color-map: map.set($color-map, $lightness-name, $theme-data);
+    }
+    $theme-definitions: map.merge(
+      $theme-definitions,
+      (
+        $color-name: $color-map,
+      )
+    );
+  }
+  @return $theme-definitions;
+}
+
+@function rgba-to-rgb($rgba, $background: #fff) {
+  $r: color.channel($rgba, "red", $space: rgb);
+  $g: color.channel($rgba, "green", $space: rgb);
+  $b: color.channel($rgba, "blue", $space: rgb);
+  $a: color.alpha($rgba);
+  $rgb: rgb($r, $g, $b);
+  @return color.mix($background, $rgb, $a * 100%);
+}

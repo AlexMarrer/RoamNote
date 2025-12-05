@@ -1,0 +1,72 @@
+$black: black;
+$white: white;
+$transparent: rgba(255 255 255 / 0%);
+
+$font-color-light: $black;
+$font-color-dark: $white;
+
+$base-colors: (
+  default: rgb(51 71 91),
+  primary: rgb(64 116 191),
+  secondary: rgb(25 61 145),
+  active: rgb(43 108 176),
+  error: rgb(220 53 69),
+  info: rgb(0 123 255),
+  info-positive: rgb(40 167 69),
+  info-warning: rgb(255 193 7),
+  info-critical: rgb(220 53 69),
+  success: rgb(40 167 69),
+  link: rgb(72 149 239),
+  focus: rgb(0 149 233),
+  grey: rgb(52 58 64),
+  background: rgb(240 248 255),
+  background-positive: rgb(210 235 184),
+  background-warning: rgb(252 227 163),
+  background-critical: rgb(248 186 192),
+  accent-1: rgb(173 216 230),
+  accent-2: rgb(135 206 235),
+  accent-3: rgb(70 130 180),
+);
+
+$color-overlay-map: (
+  50: (
+    o: 0.9,
+    oc: $white,
+  ),
+  100: (
+    o: 0.69,
+    oc: $white,
+  ),
+  200: (
+    o: 0.54,
+    oc: $white,
+  ),
+  300: (
+    o: 0.33,
+    oc: $white,
+  ),
+  400: (
+    o: 0.2,
+    oc: $white,
+  ),
+  500: (
+    o: 0,
+    oc: $black,
+  ),
+  600: (
+    o: 0.09,
+    oc: $black,
+  ),
+  700: (
+    o: 0.29,
+    oc: $black,
+  ),
+  800: (
+    o: 0.45,
+    oc: $black,
+  ),
+  900: (
+    o: 0.58,
+    oc: $black,
+  ),
+);

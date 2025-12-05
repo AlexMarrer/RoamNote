@@ -1,0 +1,30 @@
+<ion-header class="header" [translucent]="true">
+  <ion-toolbar class="header__container">
+    <img
+      [src]="
+        '../../../assets/images/' +
+        (getPaletteToggle()
+          ? 'roamnote-logo-dark-mode.png'
+          : 'roamnote-logo.png')
+      "
+      alt="logo"
+      class="header__logo"
+      slot="start"
+    />
+
+    <ion-title class="header__title" slot="end">
+      {{ title }}
+    </ion-title>
+
+    <ion-list [inset]="true" slot="end">
+      <ion-item>
+        <ion-toggle
+          [(ngModel)]="paletteToggle"
+          (ionChange)="toggleChange($event)"
+          justify="space-between"
+          >Dark Mode</ion-toggle
+        >
+      </ion-item>
+    </ion-list>
+  </ion-toolbar>
+</ion-header>
