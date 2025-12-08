@@ -1,0 +1,179 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>Trips verwalten</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismiss()">
+        <ion-icon name="close-outline" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="trip-management">
+  <div class="trip-management__container">
+    <!-- Left: Trip List (20% on desktop, fullscreen on mobile) -->
+    <div
+      class="trip-management__trips"
+      [class.trip-management__trips--hidden]="activePanel === 'details'"
+    >
+      <div class="trip-management__trips-header">
+        <h3>Trips</h3>
+      </div>
+
+      <ion-list class="trip-management__trips-list">
+        <ion-reorder-group
+          [disabled]="false"
+          (ionItemReorder)="handleReorder($event)"
+        >
+          @for (trip of trips; track trip.id) {
+          <ion-item-sliding>
+            <ion-item
+              [class.trip-management__trip--active]="
+                selectedTrip?.id === trip.id
+              "
+              (click)="selectTrip(trip)"
+              button
+            >
+              <ion-label>
+                <h3>{{ trip.name }}</h3>
+                @if (trip.start_date) {
+                <p class="trip-management__trip-date">
+                  {{ formatDate(trip.start_date) }}
+                  @if (trip.end_date) { - {{ formatDate(trip.end_date) }}
+                  }
+                </p>
+                }
+              </ion-label>
+              <ion-reorder slot="end"></ion-reorder>
+            </ion-item>
+
+            <ion-item-options side="end">
+              <ion-item-option color="primary" (click)="editTrip(trip)">
+                <ion-icon slot="icon-only" name="create-outline"></ion-icon>
+              </ion-item-option>
+              <ion-item-option color="danger" (click)="deleteTrip(trip)">
+                <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+              </ion-item-option>
+            </ion-item-options>
+          </ion-item-sliding>
+          }
+        </ion-reorder-group>
+      </ion-list>
+
+      <ion-button
+        class="trip-management__add-trip-btn"
+        expand="block"
+        (click)="openTripModal()"
+      >
+        <ion-icon name="add-outline" slot="start"></ion-icon>
+        Trip hinzufügen
+      </ion-button>
+    </div>
+
+    <!-- Right: Spots/Details (80% on desktop, fullscreen on mobile) -->
+    <div
+      class="trip-management__details"
+      [class.trip-management__details--hidden]="activePanel === 'trips'"
+    >
+      @if (selectedTrip) {
+      <!-- Mobile Back Button -->
+      <div class="trip-management__mobile-back">
+        <ion-button fill="clear" (click)="backToTrips()">
+          <ion-icon name="arrow-back-outline" slot="start"></ion-icon>
+          Zurück
+        </ion-button>
+      </div>
+
+      <div class="trip-management__details-header">
+        <div>
+          <h2>{{ selectedTrip.name }}</h2>
+          @if (selectedTrip.note) {
+          <p class="trip-management__trip-note">{{ selectedTrip.note }}</p>
+          }
+        </div>
+        <div class="trip-management__details-actions">
+          <ion-button fill="clear" (click)="editTrip(selectedTrip)">
+            <ion-icon name="create-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+          <ion-button
+            fill="clear"
+            color="danger"
+            (click)="deleteTrip(selectedTrip)"
+          >
+            <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+          </ion-button>
+        </div>
+      </div>
+
+      <div class="trip-management__places">
+        <h3>Orte</h3>
+
+        <ion-list class="trip-management__places-list">
+          <ion-reorder-group
+            [disabled]="false"
+            (ionItemReorder)="handlePlaceReorder($event)"
+          >
+            @for (tripPlace of tripPlaces; track tripPlace.id) {
+            <ion-item-sliding>
+              <ion-item button (click)="editTripPlace(tripPlace)">
+                <ion-label>
+                  <h3>{{ tripPlace.place_name }}</h3>
+                  <div class="trip-management__place-details">
+                    @if (tripPlace.arrival_date) {
+                    <p>
+                      <ion-icon name="enter-outline"></ion-icon>
+                      {{ formatDate(tripPlace.arrival_date) }}
+                    </p>
+                    } @if (tripPlace.departure_date) {
+                    <p>
+                      <ion-icon name="exit-outline"></ion-icon>
+                      {{ formatDate(tripPlace.departure_date) }}
+                    </p>
+                    } @if (tripPlace.is_alert_active) {
+                    <ion-badge color="primary">
+                      <ion-icon name="notifications"></ion-icon>
+                      Alert aktiv
+                    </ion-badge>
+                    }
+                  </div>
+                </ion-label>
+                <ion-reorder slot="end"></ion-reorder>
+              </ion-item>
+
+              <ion-item-options side="end">
+                <ion-item-option
+                  color="primary"
+                  (click)="editTripPlace(tripPlace)"
+                >
+                  <ion-icon slot="icon-only" name="create-outline"></ion-icon>
+                </ion-item-option>
+                <ion-item-option
+                  color="danger"
+                  (click)="deleteTripPlace(tripPlace)"
+                >
+                  <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+                </ion-item-option>
+              </ion-item-options>
+            </ion-item-sliding>
+            }
+          </ion-reorder-group>
+        </ion-list>
+
+        <ion-button
+          class="trip-management__add-place-btn"
+          expand="block"
+          (click)="openPlaceModal()"
+        >
+          <ion-icon name="add-circle" slot="start"></ion-icon>
+          Ort hinzufügen
+        </ion-button>
+      </div>
+      } @else {
+      <div class="trip-management__empty">
+        <ion-icon name="map-outline"></ion-icon>
+        <p>Wähle einen Trip aus oder erstelle einen neuen</p>
+      </div>
+      }
+    </div>
+  </div>
+</ion-content>

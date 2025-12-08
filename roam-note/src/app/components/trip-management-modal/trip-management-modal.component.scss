@@ -1,0 +1,315 @@
+@use "../../shared/styles/helpers/color";
+@use "../../shared/styles/helpers/mixins";
+
+.trip-management {
+  &__container {
+    display: flex;
+    height: 100%;
+    gap: 1px;
+    background: color.get(grey, 200);
+
+    @include mixins.media-handy {
+      flex-direction: column;
+      gap: 0;
+    }
+  }
+
+  &__trips {
+    width: 20%;
+    background: color.get(grey, 50);
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid color.get(grey, 200);
+    transition: transform 0.3s ease-in-out;
+
+    @include mixins.media-handy {
+      width: 100%;
+      border-right: none;
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+    }
+
+    &--hidden {
+      @include mixins.media-handy {
+        transform: translateX(-100%);
+      }
+    }
+  }
+
+  &__trips-header {
+    padding: 1rem;
+    border-bottom: 1px solid color.get(grey, 200);
+
+    h3 {
+      margin: 0;
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: color.get(grey, 900);
+    }
+  }
+
+  &__trips-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0;
+  }
+
+  &__trips-list ion-item {
+    --background: transparent;
+    --padding-start: 1rem;
+    --padding-end: 1rem;
+    --min-height: 64px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:hover {
+      --background: #{color.get(grey, 50)};
+    }
+  }
+
+  &__trip {
+    &--active {
+      --background: #{color.get(primary, 100)} !important;
+      --color: #{color.get(primary, 900)};
+      font-weight: 500;
+    }
+  }
+
+  &__trip-date {
+    font-size: 0.75rem;
+    color: color.get(grey, 600);
+    margin-top: 0.25rem;
+  }
+
+  &__add-trip-btn {
+    margin: 1rem;
+    --background: #{color.get(primary, 500)};
+
+    @include mixins.media-handy {
+      position: sticky;
+      bottom: 0;
+      margin: 0;
+      border-radius: 0;
+    }
+  }
+
+  &__mobile-back {
+    display: none;
+    padding: 0.5rem 0 0 0.5rem;
+    border-bottom: 1px solid color.get(grey, 200);
+
+    @include mixins.media-handy {
+      display: block;
+    }
+  }
+
+  &__details {
+    width: 80%;
+    background: color.get(grey, 50);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    transition: transform 0.3s ease-in-out;
+
+    @include mixins.media-handy {
+      width: 100%;
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+    }
+
+    &--hidden {
+      @include mixins.media-handy {
+        transform: translateX(100%);
+      }
+    }
+  }
+
+  &__details-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid color.get(grey, 200);
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+
+    h2 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: color.get(grey, 900);
+    }
+  }
+
+  &__trip-note {
+    font-size: 0.875rem;
+    color: color.get(grey, 700);
+    margin: 0;
+  }
+
+  &__details-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  &__places {
+    padding: 1.5rem;
+    flex: 1;
+
+    h3 {
+      margin: 0 0 1rem 0;
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: color.get(grey, 900);
+    }
+  }
+
+  &__places-list {
+    margin-bottom: 1rem;
+    padding: 0;
+  }
+
+  &__places-list ion-item {
+    --background: #{color.get(grey, 100)};
+    --border-radius: 8px;
+    margin-bottom: 0.5rem;
+    --padding-start: 1rem;
+    --padding-end: 1rem;
+    --min-height: 72px;
+
+    &:hover {
+      --background: #{color.get(grey, 200)};
+    }
+  }
+
+  &__place-details {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-top: 0.5rem;
+  }
+
+  &__place-details p {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    margin: 0;
+    font-size: 0.75rem;
+    color: color.get(grey, 600);
+  }
+
+  &__place-details p ion-icon {
+    font-size: 1rem;
+  }
+
+  &__place-details ion-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.625rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  &__place-details ion-badge ion-icon {
+    font-size: 0.875rem;
+  }
+
+  &__add-place-btn {
+    --background: #{color.get(secondary, 500)};
+
+    @include mixins.media-handy {
+      position: sticky;
+      bottom: 0;
+      margin: 0;
+      border-radius: 0;
+    }
+  }
+
+  &__empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: color.get(grey, 500);
+  }
+
+  &__empty ion-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+  }
+
+  &__empty p {
+    font-size: 1rem;
+    margin: 0;
+  }
+}
+
+:host-context(html.ion-palette-dark) {
+  .trip-management {
+    &__container {
+      background: color.get(grey, 800);
+    }
+
+    &__trips {
+      background: color.get(grey, 900);
+      border-right-color: color.get(grey, 700);
+    }
+
+    &__details {
+      background: color.get(grey, 900);
+    }
+
+    &__trips-header,
+    &__mobile-back {
+      border-bottom-color: color.get(grey, 700);
+    }
+
+    &__trips-header h3,
+    &__details-header h2,
+    &__places h3 {
+      color: color.get(grey, 100);
+    }
+
+    &__details-header {
+      border-bottom-color: color.get(grey, 700);
+    }
+
+    &__trip-note {
+      color: color.get(grey, 200);
+    }
+
+    &__trip-date {
+      color: color.get(grey, 500);
+    }
+
+    &__trips-list ion-item {
+      &:hover {
+        --background: #{color.get(grey, 800)};
+      }
+    }
+
+    &__trip--active {
+      --background: #{color.get(grey, 800)} !important;
+      --color: #{color.get(grey, 100)};
+      font-weight: 600;
+    }
+
+    &__places-list ion-item {
+      --background: #{color.get(grey, 800)};
+
+      &:hover {
+        --background: #{color.get(grey, 700)};
+      }
+    }
+
+    &__place-details p {
+      color: color.get(grey, 500);
+    }
+
+    &__empty {
+      color: color.get(grey, 600);
+    }
+  }
+}

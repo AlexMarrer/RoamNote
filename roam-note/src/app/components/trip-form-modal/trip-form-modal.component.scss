@@ -1,0 +1,41 @@
+@use "../../shared/styles/helpers/color";
+
+.trip-form {
+  &__container {
+    padding: 1rem;
+  }
+
+  &__list {
+    margin-bottom: 2rem;
+    padding: 0;
+  }
+
+  &__list ion-item {
+    --background: #{color.get(grey, 50)};
+    --border-radius: 8px;
+    margin-bottom: 1rem;
+    --padding-start: 1rem;
+    --padding-end: 1rem;
+  }
+
+  &__actions {
+    padding: 0 1rem 1rem;
+
+    ion-button {
+      --background: #{color.get(primary, 500)};
+    }
+  }
+}
+
+:host-context(html.ion-palette-dark) {
+  .trip-form {
+    &__container {
+      background: color.get(grey, 900);
+    }
+
+    &__list ion-item {
+      --background: #{color.get(grey, 800)};
+      --color: #{color.get(grey, 100)};
+    }
+  }
+}

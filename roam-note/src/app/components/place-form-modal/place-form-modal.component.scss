@@ -1,0 +1,92 @@
+@use "../../shared/styles/helpers/color";
+
+.place-form {
+  &__container {
+    padding: 1rem;
+  }
+
+  &__list {
+    margin-bottom: 2rem;
+    padding: 0;
+  }
+
+  &__list ion-item {
+    --background: #{color.get(grey, 50)};
+    --border-radius: 8px;
+    margin-bottom: 1rem;
+    --padding-start: 1rem;
+    --padding-end: 1rem;
+  }
+
+  &__search-results {
+    max-height: 300px;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+    border-radius: 8px;
+    background: color.get(grey, 100);
+  }
+
+  &__search-results ion-item {
+    --background: transparent;
+    --border-radius: 0;
+    margin-bottom: 0;
+    border-bottom: 1px solid color.get(grey, 200);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &:hover {
+      --background: #{color.get(grey, 100)};
+    }
+  }
+
+  &__selected {
+    margin-bottom: 1rem;
+
+    ion-item {
+      --background: #{color.get(primary, 50)};
+      border-left: 4px solid color.get(primary, 500);
+    }
+  }
+
+  &__actions {
+    padding: 0 1rem 1rem;
+
+    ion-button {
+      --background: #{color.get(primary, 500)};
+    }
+  }
+}
+
+:host-context(html.ion-palette-dark) {
+  .place-form {
+    &__container {
+      background: color.get(grey, 900);
+    }
+
+    &__list ion-item {
+      --background: #{color.get(grey, 800)};
+      --color: #{color.get(grey, 100)};
+    }
+
+    &__search-results {
+      background: color.get(grey, 800);
+    }
+
+    &__search-results ion-item {
+      border-bottom-color: color.get(grey, 700);
+      --color: #{color.get(grey, 100)};
+
+      &:hover {
+        --background: #{color.get(grey, 700)};
+      }
+    }
+
+    &__selected ion-item {
+      --background: #{color.get(grey, 700)};
+      --color: #{color.get(grey, 100)};
+      border-left-color: color.get(primary, 500);
+    }
+  }
+}

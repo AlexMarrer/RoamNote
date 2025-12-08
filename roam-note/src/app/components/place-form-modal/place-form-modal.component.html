@@ -1,0 +1,123 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>{{
+      isEditMode ? "Ort bearbeiten" : "Ort hinzufügen"
+    }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismiss()">Abbrechen</ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content class="place-form">
+  <form [formGroup]="placeForm" class="place-form__container">
+    <ion-list class="place-form__list">
+      <!-- Google Places Search -->
+      @if (!isEditMode) {
+      <ion-item>
+        <ion-input
+          [(ngModel)]="searchQuery"
+          [ngModelOptions]="{ standalone: true }"
+          label="Ort suchen"
+          labelPlacement="stacked"
+          placeholder="Suche nach einem Ort..."
+          (ionInput)="onSearchInput($event)"
+          debounce="300"
+        >
+        </ion-input>
+      </ion-item>
+
+      @if (searchResults.length > 0) {
+      <div class="place-form__search-results">
+        @for (result of searchResults; track result.place_id) {
+        <ion-item button (click)="selectPlace(result)">
+          <ion-label>
+            <h3>{{ result.structured_formatting.main_text }}</h3>
+            <p>{{ result.structured_formatting.secondary_text }}</p>
+          </ion-label>
+        </ion-item>
+        }
+      </div>
+      } }
+
+      <!-- Selected Place -->
+      @if (selectedPlace) {
+      <div class="place-form__selected">
+        <ion-item>
+          <ion-label>
+            <h2>{{ selectedPlace.name }}</h2>
+            <p>{{ selectedPlace.latitude }}, {{ selectedPlace.longitude }}</p>
+          </ion-label>
+        </ion-item>
+      </div>
+      }
+
+      <!-- Arrival Date -->
+      <ion-item>
+        <ion-datetime-button datetime="arrival-date"></ion-datetime-button>
+        <ion-modal [keepContentsMounted]="true">
+          <ng-template>
+            <ion-datetime
+              id="arrival-date"
+              formControlName="arrival_date"
+              presentation="date"
+              [preferWheel]="true"
+            >
+            </ion-datetime>
+          </ng-template>
+        </ion-modal>
+        <ion-label slot="start">Ankunft (optional)</ion-label>
+      </ion-item>
+
+      <!-- Departure Date -->
+      <ion-item>
+        <ion-datetime-button datetime="departure-date"></ion-datetime-button>
+        <ion-modal [keepContentsMounted]="true">
+          <ng-template>
+            <ion-datetime
+              id="departure-date"
+              formControlName="departure_date"
+              presentation="date"
+              [preferWheel]="true"
+              [min]="placeForm.get('arrival_date')?.value || undefined"
+            >
+            </ion-datetime>
+          </ng-template>
+        </ion-modal>
+        <ion-label slot="start">Abreise (optional)</ion-label>
+      </ion-item>
+
+      <!-- Alert Toggle -->
+      <ion-item>
+        <ion-toggle formControlName="is_alert_active" slot="start">
+          <ion-label>24h Benachrichtigung</ion-label>
+        </ion-toggle>
+      </ion-item>
+
+      <!-- Note -->
+      <ion-item>
+        <ion-textarea
+          formControlName="note"
+          label="Notiz (optional)"
+          labelPlacement="stacked"
+          placeholder="Notizen zu diesem Ort..."
+          [autoGrow]="true"
+          rows="3"
+          [counter]="true"
+          maxlength="500"
+        >
+        </ion-textarea>
+      </ion-item>
+    </ion-list>
+
+    <div class="place-form__actions">
+      <ion-button
+        expand="block"
+        (click)="save()"
+        [disabled]="!canSave() || saving"
+      >
+        {{ saving ? "Speichert..." : "Speichern" }}
+      </ion-button>
+    </div>
+  </form>
+</ion-content>
