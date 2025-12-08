@@ -39,3 +39,34 @@
 ion-item {
   --transition: none;
 }
+
+// Android/iOS Google Maps - Transparenz NUR auf nativen Plattformen
+body.native-map-page {
+  background: transparent !important;
+
+  html,
+  ion-app,
+  ion-router-outlet {
+    background: transparent !important;
+  }
+}
+
+// Dark Mode für native Plattformen
+body.native-map-page.dark {
+  --ion-background-color: transparent !important;
+  background: transparent !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  body.native-map-page {
+    --ion-background-color: transparent !important;
+    background: transparent !important;
+  }
+}
+
+// Trip Management Modal - 95% height, 90% width
+.trip-management-modal {
+  --width: 90%;
+  --height: 95%;
+  --border-radius: 16px;
+}

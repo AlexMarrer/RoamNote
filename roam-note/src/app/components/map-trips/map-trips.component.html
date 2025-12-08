@@ -1,0 +1,61 @@
+<div class="map-trips">
+  <div class="map-trips__map-layer">
+    <capacitor-google-map
+      #mapRef
+      class="map-trips__map-element"
+    ></capacitor-google-map>
+
+    <!-- Location FAB Button -->
+    <ion-fab-button
+      class="map-trips__location-fab"
+      size="small"
+      (click)="centerOnUserPosition()"
+      (keydown.enter)="centerOnUserPosition()"
+      aria-label="Zu meinem Standort wechseln"
+    >
+      <ion-icon name="locate"></ion-icon>
+    </ion-fab-button>
+  </div>
+
+  <div class="map-trips__trips-panel">
+    <ion-accordion-group
+      class="map-trips__accordion-group"
+      (ionChange)="onAccordionChange($event)"
+    >
+      <ion-accordion
+        *ngFor="let trip of trips"
+        [value]="trip.id"
+        class="map-trips__trip"
+      >
+        <ion-item slot="header" color="light" class="map-trips__trip-header">
+          <ion-label>
+            <h2 class="map-trips__trip-title">{{ trip.name }}</h2>
+            <p *ngIf="trip.description" class="map-trips__trip-description">
+              {{ trip.description }}
+            </p>
+          </ion-label>
+        </ion-item>
+
+        <div class="map-trips__trip-content ion-padding" slot="content">
+          <ion-list class="map-trips__spots-list">
+            <ion-item
+              *ngFor="let spot of trip.spots"
+              button
+              detail="true"
+              class="map-trips__spot"
+              (click)="onSpotClick(spot)"
+              (keydown.enter)="onSpotClick(spot)"
+            >
+              <ion-label>
+                <h3 class="map-trips__spot-name">{{ spot.name }}</h3>
+                <p *ngIf="spot.description" class="map-trips__spot-description">
+                  {{ spot.description }}
+                </p>
+              </ion-label>
+            </ion-item>
+          </ion-list>
+        </div>
+      </ion-accordion>
+    </ion-accordion-group>
+  </div>
+</div>

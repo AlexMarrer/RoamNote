@@ -1,0 +1,180 @@
+@use "../../shared/styles/helpers/color";
+
+$bg-light: color.get(background, 50);
+$bg-hover-light: color.get(background, 100);
+$bg-dark: color.get(grey, 900);
+$bg-hover-dark: color.get(grey, 800);
+$text-dark: color.get(grey, 100);
+$border-dark: color.get(grey, 700);
+
+:host {
+  display: block;
+  height: 100%;
+  width: 100%;
+}
+
+.map-trips {
+  position: relative;
+  height: 100%;
+  width: 100%;
+
+  &__map-layer {
+    position: absolute;
+    inset: 0;
+  }
+
+  &__map-element {
+    display: inline-block; // Required for Capacitor
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  &__location-fab {
+    position: absolute;
+    bottom: 5rem;
+    left: 1rem;
+    z-index: 50;
+    --background: #{color.get(grey, 50)};
+    --background-activated: #{color.get(grey, 100)};
+    --color: #{color.get(grey, 900)};
+  }
+
+  &__trips-panel {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    max-height: 50vh;
+    z-index: 100;
+    overflow-y: auto;
+    background: $bg-light;
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.3);
+    border-end-start-radius: 1rem;
+    border-end-end-radius: 1rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  &__accordion-group {
+    background: $bg-light;
+  }
+
+  &__trip {
+    margin: 0;
+    background: $bg-light;
+
+    &::part(native) {
+      background: $bg-light;
+    }
+  }
+
+  &__trip-header {
+    --background: #{$bg-light};
+    --ion-item-background: #{$bg-light};
+    --padding-start: 1rem;
+    --inner-padding-end: 1rem;
+  }
+
+  &__trip-title {
+    margin: 0;
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: color.get(grey, 900);
+  }
+
+  &__trip-description {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: color.get(grey, 600);
+  }
+
+  &__trip-content {
+    background: $bg-light;
+  }
+
+  &__spots-list {
+    padding: 0;
+    background: $bg-light;
+  }
+
+  &__spot {
+    --background: #{$bg-light};
+    --ion-item-background: #{$bg-light};
+    --padding-start: 1rem;
+    --inner-padding-end: 1rem;
+    background: $bg-light;
+    cursor: pointer;
+
+    &:hover {
+      --background: #{$bg-hover-light};
+      background: $bg-hover-light;
+    }
+  }
+
+  &__spot-name {
+    margin: 0;
+    font-weight: 500;
+    color: color.get(grey, 900);
+  }
+
+  &__spot-description {
+    margin: 0.25rem 0 0;
+    font-size: 0.875rem;
+    color: color.get(grey, 600);
+  }
+}
+
+// Dark mode via manual toggle (.dark class on html)
+:host-context(html.ion-palette-dark) {
+  .map-trips {
+    &__location-fab {
+      --background: #{$bg-dark};
+      --background-activated: #{$bg-hover-dark};
+      --color: #{$text-dark};
+    }
+
+    &__trips-panel,
+    &__accordion-group,
+    &__trip,
+    &__trip-content,
+    &__spots-list,
+    &__spot {
+      background: $bg-dark;
+      color: $text-dark;
+    }
+
+    &__trip::part(native) {
+      background: $bg-dark;
+      color: $text-dark;
+    }
+
+    &__trip-header {
+      --background: #{$bg-dark};
+      --ion-item-background: #{$bg-dark};
+      --color: #{$text-dark};
+      border-bottom: 1px solid $border-dark;
+    }
+
+    &__spot {
+      --background: #{$bg-dark};
+      --ion-item-background: #{$bg-dark};
+      --color: #{$text-dark};
+
+      &:hover {
+        --background: #{$bg-hover-dark};
+        background: $bg-hover-dark;
+      }
+    }
+
+    &__trip-title,
+    &__spot-name {
+      color: $text-dark;
+    }
+
+    &__trip-description,
+    &__spot-description {
+      color: color.get(grey, 200);
+    }
+  }
+}
