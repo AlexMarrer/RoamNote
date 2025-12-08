@@ -43,3 +43,5 @@ roam-note/www/
 # Environment files mit Secrets
 roam-note/src/environments/environment.ts
 roam-note/src/environments/environment.prod.ts
+
+projekt-setup-context.md

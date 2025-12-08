@@ -1,0 +1,48 @@
+@use "../shared/styles/helpers/color";
+
+// Android/iOS Google Maps Fix - Transparenz NUR auf nativen Plattformen
+body.native-map-page {
+  :host {
+    ion-content {
+      --background: transparent !important;
+    }
+  }
+}
+
+// Web: Normale Backgrounds (kein Transparent)
+:host {
+  ion-content {
+    // Nutzt Standard Ion Farben
+  }
+}
+
+.home {
+  &__trip-fab {
+    // Position at the border between accordion and map
+    // The map-trips component handles its own layout
+    // This FAB will be positioned at the right edge
+    top: unset;
+    bottom: 4.5rem;
+    left: 1rem;
+
+    ion-fab-button {
+      --background: #{color.get(primary, 500)};
+      --background-activated: #{color.get(primary, 600)};
+      --background-hover: #{color.get(primary, 400)};
+      --color: white;
+      --box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    }
+  }
+}
+
+:host-context(html.ion-palette-dark) {
+  .home {
+    &__trip-fab {
+      ion-fab-button {
+        --background: #{color.get(primary, 600)};
+        --background-activated: #{color.get(primary, 700)};
+        --background-hover: #{color.get(primary, 500)};
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+<app-header title="Diary"></app-header>
+
+<ion-content [fullscreen]="true">
+  <p>Battery Level: {{ batteryInfo?.batteryLevel }}</p>
+  <p>Is Charging: {{ batteryInfo?.isCharging }}</p>
+  <p>Has Succeeded: {{ hasSucceeded }}</p>
+  <p>
+    Current Position: {{ currentPosition?.coords?.latitude }}, {{
+    currentPosition?.coords?.longitude }}
+  </p>
+  <p style="color: red">Error: {{ error }}</p>
+  <p style="color: blue">Debug: {{ debug }}</p>
+</ion-content>

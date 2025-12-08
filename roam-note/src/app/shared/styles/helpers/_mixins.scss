@@ -1,0 +1,14 @@
+@use "../abstract/variables/view";
+
+// Media Query Mixins
+@mixin media-handy {
+  @media (max-width: #{map-get(view.$size-map, "handy")}) {
+    @content;
+  }
+}
+
+@mixin media-tablet-up {
+  @media (min-width: #{map-get(view.$size-map, "handy") + 1px}) {
+    @content;
+  }
+}
