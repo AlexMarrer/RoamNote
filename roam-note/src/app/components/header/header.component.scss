@@ -1,5 +1,5 @@
-@use "sass:map";
-@use "../../shared/styles/helpers/variables";
+@use "../../shared/styles/helpers/color";
+@use "../../shared/styles/helpers/mixins";
 
 .header {
   &__logo {
@@ -12,52 +12,76 @@
     justify-content: space-evenly;
   }
 
-  &__language-buttons {
-    width: min-content;
-    height: 100%;
+  &__dark-toggle-item,
+  &__dark-toggle,
+  .list-md {
+    --background: var(--ion-toolbar-background);
+    background-color: var(--background);
   }
 
-  &__language-button {
-    width: clamp(2.5rem, 10vw, 15rem);
-  }
-
-  &__language-picker,
-  &__language-picker-column {
+  &__toggle-mobile {
     display: none;
-    height: 6.25rem;
+    background: transparent;
+    border: none;
+    padding: 0;
+    cursor: pointer;
+    color: color.get(grey, 700);
+    transition: color 0.2s ease;
+
+    &:hover {
+      color: color.get(grey, 900);
+    }
+
+    &--active {
+      color: #{color.get(primary, 500)};
+
+      &:hover {
+        color: #{color.get(primary, 600)};
+      }
+    }
   }
 
-  &__short-text {
-    display: none;
+  &__toggle-mobile-icon {
+    font-size: 1.5rem;
   }
 
-  &__language-icon {
-    height: 2rem;
+  &__toggle-desktop {
+    display: block;
   }
 
-  @media screen and (width < #{map.get(variables.$view-size-map, "desktop")}) {
-    &__short-text {
+  @include mixins.media-tablet {
+    &__toggle-mobile {
       display: block;
     }
 
-    &__full-text {
+    &__toggle-desktop {
       display: none;
     }
   }
 
-  @media screen and (width < #{map.get(variables.$view-size-map, "handy")}) {
-    &__language-buttons {
-      display: none;
-    }
-
-    &__language-picker {
-      display: block;
-      width: 10rem;
-      height: 100%;
-    }
-
+  @include mixins.media-mobile-xs {
     &__title {
       display: none;
+    }
+  }
+}
+
+:host-context(html.ion-palette-dark) {
+  .header {
+    &__toggle-mobile {
+      color: color.get(grey, 300);
+
+      &:hover {
+        color: color.get(grey, 100);
+      }
+
+      &--active {
+        color: #{color.get(primary, 400)};
+
+        &:hover {
+          color: #{color.get(primary, 300)};
+        }
+      }
     }
   }
 }

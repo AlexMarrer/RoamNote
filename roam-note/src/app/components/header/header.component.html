@@ -16,14 +16,25 @@
       {{ title }}
     </ion-title>
 
-    <ion-list [inset]="true" slot="end">
-      <ion-item>
+    <ion-list class="header__dark-toggle" [inset]="true" slot="end">
+      <ion-item class="header__dark-toggle-item">
         <ion-toggle
           [(ngModel)]="paletteToggle"
           (ionChange)="toggleChange($event)"
           justify="space-between"
+          class="header__toggle-desktop"
           >Dark Mode</ion-toggle
         >
+        <button
+          (click)="toggleMobile()"
+          [attr.aria-label]="
+            paletteToggle ? 'Dark Mode deaktivieren' : 'Dark Mode aktivieren'
+          "
+          [class.header__toggle-mobile--active]="paletteToggle"
+          class="header__toggle-mobile"
+        >
+          <ion-icon name="moon" class="header__toggle-mobile-icon"></ion-icon>
+        </button>
       </ion-item>
     </ion-list>
   </ion-toolbar>
