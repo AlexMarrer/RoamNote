@@ -4,8 +4,11 @@
   <app-map-trips></app-map-trips>
 
   <ion-fab class="home__trip-fab" vertical="center" horizontal="end" edge>
-    <ion-fab-button (click)="openTripManagement()">
-      <ion-icon name="add-outline"></ion-icon>
+    <ion-fab-button
+      (click)="openTripManagement()"
+      (keypress)="openTripManagement()"
+    >
+      <ion-icon name="pencil-outline"></ion-icon>
     </ion-fab-button>
   </ion-fab>
 </ion-content>
