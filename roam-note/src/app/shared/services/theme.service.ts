@@ -1,5 +1,7 @@
 import { Injectable } from '@angular/core';
 import { BehaviorSubject, Observable } from 'rxjs';
+import { Capacitor } from '@capacitor/core';
+import { StatusBar, Style } from '@capacitor/status-bar';
 
 @Injectable({
   providedIn: 'root',
@@ -13,6 +15,20 @@ export class ThemeService {
 
   constructor() {
     this.initializeDarkMode();
+  }
+
+  /**
+   * Initializes the theme service
+   * Shows the status bar on native platforms
+   */
+  async initialize(): Promise<void> {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        await StatusBar.show();
+      } catch (error) {
+        console.warn('[ThemeService] Could not show status bar:', error);
+      }
+    }
   }
 
   private getInitialDarkMode(): boolean {
@@ -41,6 +57,10 @@ export class ThemeService {
     });
   }
 
+  /**
+   * Toggles dark mode on or off
+   * @param isDark true for dark mode, false for light mode
+   */
   toggleDarkMode(isDark: boolean): void {
     localStorage.setItem('roam-note-dark-mode', isDark.toString());
     this.applyDarkMode(isDark);
@@ -49,8 +69,27 @@ export class ThemeService {
 
   private applyDarkMode(isDark: boolean): void {
     document.documentElement.classList.toggle('ion-palette-dark', isDark);
+    this.setStatusBarStyle(isDark);
   }
 
+  private async setStatusBarStyle(isDark: boolean): Promise<void> {
+    if (!Capacitor.isNativePlatform()) {
+      return;
+    }
+
+    try {
+      await StatusBar.setStyle({
+        style: isDark ? Style.Dark : Style.Light,
+      });
+    } catch (error) {
+      console.warn('[ThemeService] Could not set status bar style:', error);
+    }
+  }
+
+  /**
+   * Returns the current dark mode status
+   * @returns true if dark mode is active
+   */
   isDarkMode(): boolean {
     return this.darkModeSubject.value;
   }
