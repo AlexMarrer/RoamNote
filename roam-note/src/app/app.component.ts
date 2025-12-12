@@ -2,6 +2,9 @@ import { Component, OnInit } from '@angular/core';
 import { IonApp, IonRouterOutlet } from '@ionic/angular/standalone';
 import { NotificationService } from './shared/services/notification.service';
 import { TripsService } from './shared/services/trips.service';
+import { ThemeService } from './shared/services/theme.service';
+import { SpotsService } from './shared/services/spots.service';
+import { NetworkService } from './shared/services/network.service';
 
 @Component({
   selector: 'app-root',
@@ -11,34 +14,43 @@ import { TripsService } from './shared/services/trips.service';
 export class AppComponent implements OnInit {
   constructor(
     private readonly notificationService: NotificationService,
-    private readonly tripsService: TripsService
+    private readonly tripsService: TripsService,
+    private readonly themeService: ThemeService,
+    private readonly spotsService: SpotsService,
+    private readonly networkService: NetworkService
   ) {}
 
+  /**
+   * Initializes the app component
+   * Starts app initialization when component loads
+   */
   ngOnInit(): void {
-    // Request notification permissions on app startup
-    this.requestNotificationPermissions();
+    this.initialize();
+  }
 
-    // Sync all notifications with database
-    this.syncNotifications();
+  private async initialize(): Promise<void> {
+    await this.networkService.initialize();
+    await this.themeService.initialize();
+    await this.requestNotificationPermissions();
+    await this.requestLocationPermissions();
+    await this.syncNotifications();
   }
 
   private async requestNotificationPermissions(): Promise<void> {
     const hasPermission = await this.notificationService.checkPermissions();
     if (!hasPermission) {
-      const granted = await this.notificationService.requestPermissions();
-      if (granted) {
-        console.log('[AppComponent] Notification permissions granted');
-      } else {
-        console.warn('[AppComponent] Notification permissions denied');
-      }
+      await this.notificationService.requestPermissions();
     }
+  }
+
+  private async requestLocationPermissions(): Promise<void> {
+    await this.spotsService.requestLocationPermission();
   }
 
   private async syncNotifications(): Promise<void> {
     try {
       const tripPlaces = await this.tripsService.getAllTripPlaces();
       await this.notificationService.syncAllNotifications(tripPlaces);
-      console.log('[AppComponent] Notifications synced on startup');
     } catch (error) {
       console.error('[AppComponent] Error syncing notifications:', error);
     }
