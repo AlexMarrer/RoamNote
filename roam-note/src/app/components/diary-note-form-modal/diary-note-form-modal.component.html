@@ -1,0 +1,96 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>{{ isEditMode ? "Notiz bearbeiten" : "Neue Notiz" }}</ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismiss()" (keypress)="dismiss()">
+        <ion-icon name="close" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="diary-note-form">
+    <!-- Note Form -->
+    <ion-list class="diary-note-form__form">
+      <!-- Note Content -->
+      <ion-item class="diary-note-form__form-item">
+        <ion-label position="stacked">Notiz *</ion-label>
+        <ion-textarea
+          [(ngModel)]="content"
+          placeholder="Was hast du erlebt? Was möchtest du festhalten?"
+          [autoGrow]="true"
+          rows="6"
+          required
+        ></ion-textarea>
+      </ion-item>
+
+      <!-- Spot Selection -->
+      <ion-item class="diary-note-form__form-item">
+        <ion-label position="stacked">
+          <div class="diary-note-form__label">
+            <ion-icon name="location-outline"></ion-icon>
+            <span class="diary-note-form__label-text"
+              >Besuchte Orte (optional)</span
+            >
+          </div>
+        </ion-label>
+        <ion-select
+          [(ngModel)]="selectedSpotIds"
+          placeholder="Orte auswählen..."
+          [multiple]="true"
+          interface="action-sheet"
+          cancelText="Abbrechen"
+          okText="OK"
+        >
+          <ion-select-option
+            *ngFor="let spot of availableSpots"
+            [value]="spot.id"
+          >
+            {{ getSpotDisplayText(spot) }}
+          </ion-select-option>
+        </ion-select>
+      </ion-item>
+    </ion-list>
+
+    <!-- Selected Spots Display -->
+    <div
+      class="diary-note-form__selected-spots"
+      *ngIf="selectedSpotIds.length > 0"
+    >
+      <h3 class="diary-note-form__selected-spots-title">Ausgewählte Orte</h3>
+      <div class="diary-note-form__chips">
+        <ion-chip
+          *ngFor="let spot of getSelectedSpots()"
+          (click)="removeSpot(spot.id)"
+          (keypress)="removeSpot(spot.id)"
+          class="diary-note-form__chip"
+        >
+          <ion-icon name="location-outline"></ion-icon>
+          <ion-label>{{ spot.name }}</ion-label>
+          <ion-icon name="close"></ion-icon>
+        </ion-chip>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="diary-note-form__actions">
+      <ion-button
+        (click)="dismiss()"
+        (keypress)="dismiss()"
+        expand="block"
+        fill="outline"
+      >
+        Abbrechen
+      </ion-button>
+      <ion-button
+        (click)="save()"
+        (keypress)="save()"
+        expand="block"
+        [disabled]="!content.trim()"
+      >
+        {{ isEditMode ? "Speichern" : "Erstellen" }}
+      </ion-button>
+    </div>
+  </div>
+</ion-content>

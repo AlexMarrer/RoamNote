@@ -1,0 +1,129 @@
+<ion-header>
+  <ion-toolbar>
+    <ion-title>
+      <div *ngIf="isEditMode && date">
+        {{ formatDateForDisplay(date) }}
+      </div>
+      <div *ngIf="!isEditMode">Neuer Tagebuch-Eintrag</div>
+    </ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="dismiss()">
+        <ion-icon name="close" slot="icon-only"></ion-icon>
+      </ion-button>
+    </ion-buttons>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content>
+  <div class="diary-entry-modal">
+    <!-- Entry Form -->
+    <ion-list class="diary-entry-modal__form">
+      <ion-item class="diary-entry-modal__form-item">
+        <ion-label position="stacked">Datum *</ion-label>
+        <ion-input
+          type="date"
+          [(ngModel)]="dateInput"
+          [max]="maxDate"
+          [disabled]="isEditMode"
+          required
+        ></ion-input>
+      </ion-item>
+
+      <ion-item class="diary-entry-modal__form-item">
+        <ion-label position="stacked">Titel (optional)</ion-label>
+        <ion-input
+          type="text"
+          [(ngModel)]="title"
+          placeholder="z.B. Sightseeing in Paris"
+        ></ion-input>
+      </ion-item>
+    </ion-list>
+
+    <!-- Notes Section (only in edit mode) -->
+    <div class="diary-entry-modal__notes" *ngIf="isEditMode && entry">
+      <div class="diary-entry-modal__notes-header">
+        <h2 class="diary-entry-modal__notes-title">Notizen</h2>
+        <ion-button (click)="addNote()" fill="clear" size="small">
+          <ion-icon name="add" slot="start"></ion-icon>
+          Notiz hinzufügen
+        </ion-button>
+      </div>
+
+      <!-- Notes List -->
+      <div class="diary-entry-modal__notes-list" *ngIf="entry.notes.length > 0">
+        <ion-card
+          class="diary-entry-modal__note"
+          *ngFor="let note of entry.notes"
+        >
+          <ion-card-content class="diary-entry-modal__note-content">
+            <!-- Note Text -->
+            <p class="diary-entry-modal__note-text">{{ note.content }}</p>
+
+            <!-- Spots -->
+            <div
+              class="diary-entry-modal__note-spots"
+              *ngIf="note.spots.length > 0"
+            >
+              <span
+                class="diary-entry-modal__note-spot"
+                *ngFor="let spot of note.spots; let last = last"
+              >
+                📍 {{ spot.tripName }} - {{ spot.name
+                }}<span *ngIf="!last">, </span>
+              </span>
+            </div>
+
+            <!-- Note Actions -->
+            <div class="diary-entry-modal__note-actions">
+              <span class="diary-entry-modal__note-time">
+                {{ formatTime(note.createdAt) }}
+              </span>
+              <div class="diary-entry-modal__note-buttons">
+                <ion-button
+                  (click)="editNote(note)"
+                  fill="clear"
+                  size="small"
+                  color="primary"
+                >
+                  <ion-icon name="create-outline" slot="icon-only"></ion-icon>
+                </ion-button>
+                <ion-button
+                  (click)="deleteNote(note)"
+                  fill="clear"
+                  size="small"
+                  color="danger"
+                >
+                  <ion-icon name="trash-outline" slot="icon-only"></ion-icon>
+                </ion-button>
+              </div>
+            </div>
+          </ion-card-content>
+        </ion-card>
+      </div>
+
+      <!-- Empty Notes State -->
+      <p
+        class="diary-entry-modal__notes-empty"
+        *ngIf="entry.notes.length === 0"
+      >
+        Noch keine Notizen für diesen Tag. Füge deine erste Notiz hinzu!
+      </p>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="diary-entry-modal__actions">
+      <ion-button
+        (click)="deleteEntry()"
+        *ngIf="isEditMode"
+        expand="block"
+        color="danger"
+        fill="outline"
+      >
+        Eintrag löschen
+      </ion-button>
+      <ion-button (click)="save()" expand="block" [disabled]="!dateInput">
+        {{ isEditMode ? "Speichern" : "Erstellen" }}
+      </ion-button>
+    </div>
+  </div>
+</ion-content>
