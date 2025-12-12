@@ -65,6 +65,8 @@ export class PlaceFormModalComponent implements OnInit {
   @Input() tripId!: number;
   @Input() tripPlace?: TripPlaceWithDetails;
   @Input() nextVisitOrder!: number;
+  @Input() tripStartDate?: string;
+  @Input() tripEndDate?: string;
 
   placeForm!: FormGroup;
   isEditMode = false;
@@ -73,6 +75,8 @@ export class PlaceFormModalComponent implements OnInit {
   searchQuery = '';
   searchResults: GooglePlacePrediction[] = [];
   selectedPlace: SelectedPlace | null = null;
+  minDate?: string;
+  maxDate?: string;
 
   constructor(
     private readonly modalController: ModalController,
@@ -80,8 +84,17 @@ export class PlaceFormModalComponent implements OnInit {
     private readonly googlePlacesService: GooglePlacesService
   ) {}
 
+  /**
+   * Initializes the place form modal
+   * Sets edit mode, min/max dates, and initializes the form
+   */
   ngOnInit(): void {
     this.isEditMode = !!this.tripPlace;
+
+    // Set min/max dates based on trip dates
+    this.minDate = this.tripStartDate;
+    this.maxDate = this.tripEndDate;
+
     this.initializeForm();
 
     if (this.isEditMode && this.tripPlace) {
@@ -91,6 +104,8 @@ export class PlaceFormModalComponent implements OnInit {
         longitude: this.tripPlace.place_longitude,
         placeId: '', // Not available for existing places
       };
+      // In Edit Mode: Allow searching for a new place
+      this.searchQuery = this.tripPlace.place_name;
     }
   }
 
@@ -103,10 +118,18 @@ export class PlaceFormModalComponent implements OnInit {
     });
   }
 
+  /**
+   * Closes the modal without saving changes
+   */
   dismiss(): void {
     this.modalController.dismiss();
   }
 
+  /**
+   * Handles search input for places
+   * Searches for places via the Google Places API
+   * @param event CustomEvent with the search text
+   */
   async onSearchInput(event: CustomEvent): Promise<void> {
     const query = (event.detail.value || '').trim();
 
@@ -123,6 +146,11 @@ export class PlaceFormModalComponent implements OnInit {
     }
   }
 
+  /**
+   * Selects a place from the search results
+   * Loads the complete place details including coordinates
+   * @param prediction Google Places prediction with place ID
+   */
   async selectPlace(prediction: GooglePlacePrediction): Promise<void> {
     try {
       const placeDetails = await this.googlePlacesService.getPlaceDetails(
@@ -143,10 +171,18 @@ export class PlaceFormModalComponent implements OnInit {
     }
   }
 
+  /**
+   * Checks if the form can be saved
+   * @returns true if a place is selected and the form is valid
+   */
   canSave(): boolean {
     return this.selectedPlace !== null && this.placeForm.valid;
   }
 
+  /**
+   * Saves the place and closes the modal
+   * Validates the data and formats date values
+   */
   save(): void {
     if (!this.canSave() || !this.selectedPlace) {
       return;

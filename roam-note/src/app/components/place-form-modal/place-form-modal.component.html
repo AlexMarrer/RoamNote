@@ -4,7 +4,9 @@
       isEditMode ? "Ort bearbeiten" : "Ort hinzufügen"
     }}</ion-title>
     <ion-buttons slot="end">
-      <ion-button (click)="dismiss()">Abbrechen</ion-button>
+      <ion-button (click)="dismiss()" (keypress)="dismiss()"
+        >Abbrechen</ion-button
+      >
     </ion-buttons>
   </ion-toolbar>
 </ion-header>
@@ -12,8 +14,7 @@
 <ion-content class="place-form">
   <form [formGroup]="placeForm" class="place-form__container">
     <ion-list class="place-form__list">
-      <!-- Google Places Search -->
-      @if (!isEditMode) {
+      <!-- Google Places Search (auch im Edit Mode für Ort-Änderung) -->
       <ion-item>
         <ion-input
           [(ngModel)]="searchQuery"
@@ -30,23 +31,33 @@
       @if (searchResults.length > 0) {
       <div class="place-form__search-results">
         @for (result of searchResults; track result.place_id) {
-        <ion-item button (click)="selectPlace(result)">
+        <ion-item
+          button
+          (click)="selectPlace(result)"
+          (keypress)="selectPlace(result)"
+        >
           <ion-label>
-            <h3>{{ result.structured_formatting.main_text }}</h3>
-            <p>{{ result.structured_formatting.secondary_text }}</p>
+            <h3 class="place-form__search-result-name">
+              {{ result.structured_formatting.main_text }}
+            </h3>
+            <p class="place-form__search-result-desc">
+              {{ result.structured_formatting.secondary_text }}
+            </p>
           </ion-label>
         </ion-item>
         }
       </div>
-      } }
+      }
 
       <!-- Selected Place -->
       @if (selectedPlace) {
       <div class="place-form__selected">
         <ion-item>
           <ion-label>
-            <h2>{{ selectedPlace.name }}</h2>
-            <p>{{ selectedPlace.latitude }}, {{ selectedPlace.longitude }}</p>
+            <h2 class="place-form__selected-name">{{ selectedPlace.name }}</h2>
+            <p class="place-form__selected-coords">
+              {{ selectedPlace.latitude }}, {{ selectedPlace.longitude }}
+            </p>
           </ion-label>
         </ion-item>
       </div>
@@ -62,6 +73,9 @@
               formControlName="arrival_date"
               presentation="date"
               [preferWheel]="true"
+              [showDefaultButtons]="true"
+              [min]="minDate"
+              [max]="maxDate"
             >
             </ion-datetime>
           </ng-template>
@@ -79,7 +93,9 @@
               formControlName="departure_date"
               presentation="date"
               [preferWheel]="true"
-              [min]="placeForm.get('arrival_date')?.value || undefined"
+              [showDefaultButtons]="true"
+              [min]="placeForm.get('arrival_date')?.value || minDate"
+              [max]="maxDate"
             >
             </ion-datetime>
           </ng-template>
@@ -110,14 +126,15 @@
       </ion-item>
     </ion-list>
 
-    <div class="place-form__actions">
-      <ion-button
-        expand="block"
-        (click)="save()"
-        [disabled]="!canSave() || saving"
-      >
-        {{ saving ? "Speichert..." : "Speichern" }}
-      </ion-button>
-    </div>
+    <ion-button
+      class="place-form__save-btn"
+      expand="block"
+      color="primary"
+      (click)="save()"
+      (keypress)="save()"
+      [disabled]="!canSave() || saving"
+    >
+      {{ saving ? "Speichert..." : "Speichern" }}
+    </ion-button>
   </form>
 </ion-content>
