@@ -1,13 +1,93 @@
 <app-header title="Diary"></app-header>
 
 <ion-content [fullscreen]="true">
-  <p>Battery Level: {{ batteryInfo?.batteryLevel }}</p>
-  <p>Is Charging: {{ batteryInfo?.isCharging }}</p>
-  <p>Has Succeeded: {{ hasSucceeded }}</p>
-  <p>
-    Current Position: {{ currentPosition?.coords?.latitude }}, {{
-    currentPosition?.coords?.longitude }}
-  </p>
-  <p style="color: red">Error: {{ error }}</p>
-  <p style="color: blue">Debug: {{ debug }}</p>
+  <div class="diary">
+    <!-- Empty State -->
+    <div class="diary__empty" *ngIf="entries.length === 0">
+      <ion-icon name="calendar-outline" class="diary__empty-icon"></ion-icon>
+      <h2 class="diary__empty-title">Noch keine Einträge</h2>
+      <p class="diary__empty-text">
+        Erstelle deinen ersten Tagebuch-Eintrag und halte deine Reiseerlebnisse
+        fest!
+      </p>
+    </div>
+
+    <!-- Entries List -->
+    <div class="diary__list" *ngIf="entries.length > 0">
+      <ion-card
+        class="diary__entry"
+        *ngFor="let entry of entries"
+        (click)="openEditEntryModal(entry)"
+        (keypress)="openEditEntryModal(entry)"
+      >
+        <!-- Entry Header -->
+        <ion-card-header class="diary__entry-header">
+          <div class="diary__entry-header-top">
+            <ion-icon
+              name="calendar-outline"
+              class="diary__entry-icon"
+            ></ion-icon>
+            <ion-card-title class="diary__entry-date">
+              {{ formatDate(entry.date) }}
+            </ion-card-title>
+          </div>
+          <h3 class="diary__entry-title" *ngIf="entry.title">
+            {{ entry.title }}
+          </h3>
+        </ion-card-header>
+
+        <!-- Entry Content -->
+        <ion-card-content class="diary__entry-content">
+          <!-- Notes List -->
+          <div class="diary__notes" *ngIf="entry.notes.length > 0">
+            <div
+              class="diary__note"
+              *ngFor="let note of entry.notes"
+              (click)="$event.stopPropagation()"
+              (keypress)="$event.stopPropagation()"
+            >
+              <!-- Note Content -->
+              <p class="diary__note-content">{{ note.content }}</p>
+
+              <!-- Spots List -->
+              <div class="diary__spots" *ngIf="note.spots.length > 0">
+                <ion-icon
+                  name="location-outline"
+                  class="diary__spots-icon"
+                ></ion-icon>
+                <div class="diary__spots-list">
+                  <span
+                    class="diary__spot"
+                    *ngFor="let spot of note.spots; let last = last"
+                  >
+                    {{ spot.tripName }} - {{ spot.name }}<span *ngIf="!last"
+                      >,
+                    </span>
+                  </span>
+                </div>
+              </div>
+
+              <!-- Note Metadata -->
+              <p class="diary__note-time">{{ formatTime(note.createdAt) }}</p>
+            </div>
+          </div>
+
+          <!-- No Notes State -->
+          <p class="diary__no-notes" *ngIf="entry.notes.length === 0">
+            Noch keine Notizen für diesen Tag
+          </p>
+        </ion-card-content>
+      </ion-card>
+    </div>
+
+    <!-- FAB Button -->
+    <ion-fab class="diary__fab" vertical="bottom" horizontal="start">
+      <ion-fab-button
+        (click)="openCreateEntryModal()"
+        (keypress)="openCreateEntryModal()"
+      >
+        <ion-icon name="add"></ion-icon>
+      </ion-fab-button>
+    </ion-fab>
+  </div>
 </ion-content>

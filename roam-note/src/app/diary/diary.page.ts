@@ -1,63 +1,134 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
-import { IonContent } from '@ionic/angular/standalone';
-import { BatteryInfo, Device, DeviceInfo } from '@capacitor/device';
-import { Position } from '@capacitor/geolocation';
+import {
+  IonContent,
+  IonFab,
+  IonFabButton,
+  IonIcon,
+  IonCard,
+  IonCardHeader,
+  IonCardTitle,
+  IonCardContent,
+  ModalController,
+} from '@ionic/angular/standalone';
+import { CommonModule } from '@angular/common';
+import { addIcons } from 'ionicons';
+import { add, calendarOutline, locationOutline } from 'ionicons/icons';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { HeaderComponent } from '../shared';
-import { SpotsService } from '../shared/services/spots.service';
+import { DiaryService } from '../shared/services/diary.service';
+import { DiaryEntryWithDetails } from '../shared/models/diary-entry.model';
+import { DiaryEntryModalComponent } from '../components/diary-entry-modal/diary-entry-modal.component';
 
 @Component({
   selector: 'app-diary',
   templateUrl: 'diary.page.html',
   styleUrls: ['diary.page.scss'],
-  imports: [IonContent, HeaderComponent],
+  imports: [
+    CommonModule,
+    IonContent,
+    IonFab,
+    IonFabButton,
+    IonIcon,
+    IonCard,
+    IonCardHeader,
+    IonCardTitle,
+    IonCardContent,
+    HeaderComponent,
+  ],
 })
 export class DiaryPage implements OnInit, OnDestroy {
-  deviceInfo: DeviceInfo | null = null;
-  batteryInfo: BatteryInfo | null = null;
-  currentPosition: Position | null = null;
-  hasSucceeded = false;
-  error = '';
-  debug = '';
+  entries: DiaryEntryWithDetails[] = [];
+  private readonly destroy$ = new Subject<void>();
 
-  private refreshInterval: ReturnType<typeof setInterval> | null = null;
+  constructor(
+    private readonly diaryService: DiaryService,
+    private readonly modalController: ModalController
+  ) {
+    addIcons({ add, calendarOutline, locationOutline });
+  }
 
-  constructor(private readonly spotsService: SpotsService) {}
-
+  /**
+   * Initializes the diary page
+   * Loads all diary entries
+   */
   ngOnInit(): void {
-    this.initializeData();
+    this.loadEntries();
   }
 
+  /**
+   * Called when the component is destroyed
+   * Completes all active subscriptions
+   */
   ngOnDestroy(): void {
-    this.cleanup();
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
-  private async initializeData(): Promise<void> {
-    await this.loadDeviceInfo();
-    this.spotsService.initGeolocation();
-    this.spotsService.userPosition$.subscribe((position) => {
-      if (position) {
-        this.currentPosition = position;
-        this.hasSucceeded = true;
-        this.debug = `Position: ${position.coords.latitude}, ${position.coords.longitude}`;
-      }
+  /**
+   * Loads diary entries with reactive updates
+   * Subscribes to the diary service for automatic updates
+   */
+  private loadEntries(): void {
+    this.diaryService
+      .getDiaryEntries$()
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((entries) => {
+        this.entries = entries;
+      });
+  }
+
+  /**
+   * Opens a modal to create a new diary entry
+   */
+  async openCreateEntryModal(): Promise<void> {
+    const modal = await this.modalController.create({
+      component: DiaryEntryModalComponent,
     });
-    this.startRefreshInterval();
+
+    await modal.present();
   }
 
-  private async loadDeviceInfo(): Promise<void> {
-    this.deviceInfo = await Device.getInfo();
-    this.batteryInfo = await Device.getBatteryInfo();
+  /**
+   * Opens a modal to edit a diary entry
+   * @param entry The diary entry to edit
+   */
+  async openEditEntryModal(entry: DiaryEntryWithDetails): Promise<void> {
+    const modal = await this.modalController.create({
+      component: DiaryEntryModalComponent,
+      componentProps: {
+        entry,
+      },
+    });
+
+    await modal.present();
   }
 
-  private startRefreshInterval(): void {
-    this.refreshInterval = setInterval(() => {
-      this.loadDeviceInfo();
-    }, 5000);
+  /**
+   * Formats a date for display
+   * @param dateString ISO date string (YYYY-MM-DD)
+   * @returns Formatted date in German format (e.g., "Montag, 1. Januar 2024")
+   */
+  formatDate(dateString: string): string {
+    const date = new Date(dateString + 'T00:00:00');
+    return date.toLocaleDateString('de-DE', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric',
+    });
   }
 
-  private async cleanup(): Promise<void> {
-    if (this.refreshInterval) {
-      clearInterval(this.refreshInterval);
-    }
+  /**
+   * Formats a time for display
+   * @param dateString ISO date string with time component
+   * @returns Formatted time (e.g., "14:30")
+   */
+  formatTime(dateString: string): string {
+    const date = new Date(dateString);
+    return date.toLocaleTimeString('de-DE', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
   }
 }

@@ -1,12 +1,20 @@
 export * from '../components/header/header.component';
 export * from '../components/map-trips/map-trips.component';
 
+// Constants
+export * from './constants/error-messages';
+export * from './constants/toast-config';
+
 // Services
 export * from './services/supabase.service';
 export * from './services/trips.service';
 export * from './services/google-places.service';
 export { SpotsService, type Spot } from './services/spots.service';
 export * from './services/theme.service';
+export * from './services/diary.service';
+export * from './services/diary-storage.service';
+export * from './services/network.service';
+export * from './services/trips-storage.service';
 
 // Models
 export * from './models/trip.model';
