@@ -1,7 +1,21 @@
 import { Injectable } from '@angular/core';
-import { Observable, from, map, BehaviorSubject, tap, switchMap } from 'rxjs';
+import {
+  Observable,
+  from,
+  map,
+  BehaviorSubject,
+  tap,
+  switchMap,
+  distinctUntilChanged,
+  skip,
+  throwError,
+  of,
+} from 'rxjs';
 import { SupabaseService } from './supabase.service';
+import { ERROR_MESSAGES } from '../constants/error-messages';
 import { NotificationService } from './notification.service';
+import { NetworkService } from './network.service';
+import { TripsStorageService } from './trips-storage.service';
 import { Trip, TripInsert, TripUpdate } from '../models/trip.model';
 import { Place, PlaceInsert, PlaceUpdate } from '../models/place.model';
 import {
@@ -15,7 +29,7 @@ import {
   providedIn: 'root',
 })
 export class TripsService {
-  private readonly tripsSubject$ = new BehaviorSubject<Trip[]>([]);
+  public readonly tripsSubject$ = new BehaviorSubject<Trip[]>([]);
   public readonly trips$ = this.tripsSubject$.asObservable();
 
   private readonly tripPlacesMap = new Map<
@@ -25,12 +39,35 @@ export class TripsService {
 
   constructor(
     private readonly supabaseService: SupabaseService,
-    private readonly notificationService: NotificationService
+    private readonly notificationService: NotificationService,
+    private readonly networkService: NetworkService,
+    private readonly tripsStorage: TripsStorageService
   ) {
-    this.loadTrips();
+    this.initializeTrips();
+
+    this.networkService
+      .getOnlineStatus()
+      .pipe(distinctUntilChanged(), skip(1))
+      .subscribe((isOnline) => {
+        if (isOnline) {
+          this.refreshTrips();
+        }
+      });
   }
 
-  private loadTrips(): void {
+  private initializeTrips(): void {
+    this.loadTrips().catch((error) => {
+      console.error('[TripsService] Failed to load trips:', error);
+    });
+  }
+
+  private async loadTrips(): Promise<void> {
+    if (!this.networkService.isOnline()) {
+      const cachedTrips = await this.tripsStorage.getCachedTrips();
+      this.tripsSubject$.next(cachedTrips);
+      return;
+    }
+
     const supabase = this.supabaseService.getClient();
     from(
       supabase
@@ -48,26 +85,59 @@ export class TripsService {
             throw response.error;
           }
           return response.data as Trip[];
+        }),
+        tap(async (trips) => {
+          await this.tripsStorage.cacheTrips(trips);
         })
       )
       .subscribe({
         next: (trips) => {
           this.tripsSubject$.next(trips);
         },
-        error: (error) => console.error('[TripsService] Load error:', error),
+        error: (error) => {
+          console.error('[TripsService] Load error:', error);
+          this.tripsStorage.getCachedTrips().then((cachedTrips) => {
+            if (cachedTrips.length > 0) {
+              console.log('[TripsService] ⚠️ Using cached trips due to error');
+              this.tripsSubject$.next(cachedTrips);
+            }
+          });
+        },
       });
   }
 
+  /**
+   * Updates the trip list by reloading from Supabase
+   */
   refreshTrips(): void {
-    this.loadTrips();
+    this.loadTrips().catch((error) => {
+      console.error('[TripsService] Refresh failed:', error);
+    });
+  }
+
+  private checkOnlineOrError<T>(): Observable<void> {
+    if (!this.networkService.isOnline()) {
+      return throwError(() => new Error(ERROR_MESSAGES.OFFLINE));
+    }
+
+    return of(undefined) as Observable<void>;
   }
 
   // ==================== TRIPS ====================
 
+  /**
+   * Returns an observable of trips
+   * @returns Observable with all trips
+   */
   getTrips(): Observable<Trip[]> {
     return this.trips$;
   }
 
+  /**
+   * Loads a specific trip by its ID
+   * @param id The trip ID
+   * @returns Observable with the trip
+   */
   getTripById(id: number): Observable<Trip> {
     const supabase = this.supabaseService.getClient();
     return from(supabase.from('Trip').select('*').eq('id', id).single()).pipe(
@@ -82,50 +152,87 @@ export class TripsService {
   }
 
   createTrip(trip: TripInsert): Observable<Trip> {
-    const supabase = this.supabaseService.getClient();
-    return from(supabase.from('Trip').insert(trip).select().single()).pipe(
-      map((response) => {
-        if (response.error) {
-          console.error('[TripsService] Error creating trip:', response.error);
-          throw response.error;
-        }
-        return response.data as Trip;
-      }),
-      tap(() => this.refreshTrips())
+    return this.checkOnlineOrError().pipe(
+      switchMap(() => {
+        const supabase = this.supabaseService.getClient();
+        return from(supabase.from('Trip').insert(trip).select().single()).pipe(
+          map((response) => {
+            if (response.error) {
+              console.error(
+                '[TripsService] Error creating trip:',
+                response.error
+              );
+              throw response.error;
+            }
+            return response.data as Trip;
+          }),
+          tap(() => this.refreshTrips())
+        );
+      })
     );
   }
 
+  /**
+   * Updates an existing trip
+   * @param id The trip ID
+   * @param trip The trip data to update
+   * @returns Observable with the updated trip
+   */
   updateTrip(id: number, trip: TripUpdate): Observable<Trip> {
-    const supabase = this.supabaseService.getClient();
-    return from(
-      supabase.from('Trip').update(trip).eq('id', id).select().single()
-    ).pipe(
-      map((response) => {
-        if (response.error) {
-          console.error('[TripsService] Error updating trip:', response.error);
-          throw response.error;
-        }
-        return response.data as Trip;
-      }),
-      tap(() => this.refreshTrips())
+    return this.checkOnlineOrError().pipe(
+      switchMap(() => {
+        const supabase = this.supabaseService.getClient();
+        return from(
+          supabase.from('Trip').update(trip).eq('id', id).select().single()
+        ).pipe(
+          map((response) => {
+            if (response.error) {
+              console.error(
+                '[TripsService] Error updating trip:',
+                response.error
+              );
+              throw response.error;
+            }
+            return response.data as Trip;
+          }),
+          tap(() => this.refreshTrips())
+        );
+      })
     );
   }
 
+  /**
+   * Deletes a trip
+   * @param id The trip ID
+   * @returns Observable that completes when deleted
+   */
   deleteTrip(id: number): Observable<void> {
-    const supabase = this.supabaseService.getClient();
-    return from(supabase.from('Trip').delete().eq('id', id)).pipe(
-      map((response) => {
-        if (response.error) {
-          console.error('[TripsService] Error deleting trip:', response.error);
-          throw response.error;
-        }
-      }),
-      tap(() => this.refreshTrips())
+    return this.checkOnlineOrError().pipe(
+      switchMap(() => {
+        const supabase = this.supabaseService.getClient();
+        return from(supabase.from('Trip').delete().eq('id', id)).pipe(
+          map((response) => {
+            if (response.error) {
+              console.error(
+                '[TripsService] Error deleting trip:',
+                response.error
+              );
+              throw response.error;
+            }
+          }),
+          tap(() => this.refreshTrips())
+        );
+      })
     );
   }
 
   // ==================== PLACES ====================
 
+  /**
+   * Loads a specific place by its ID
+   * @param id The place ID
+   * @returns Observable with the place
+   */
   getPlaceById(id: number): Observable<Place> {
     const supabase = this.supabaseService.getClient();
     return from(supabase.from('Place').select('*').eq('id', id).single()).pipe(
@@ -140,37 +247,63 @@ export class TripsService {
   }
 
   createPlace(place: PlaceInsert): Observable<Place> {
-    const supabase = this.supabaseService.getClient();
-    return from(supabase.from('Place').insert(place).select().single()).pipe(
-      map((response) => {
-        if (response.error) {
-          console.error('[TripsService] Error creating place:', response.error);
-          throw response.error;
-        }
-        return response.data as Place;
+    return this.checkOnlineOrError().pipe(
+      switchMap(() => {
+        const supabase = this.supabaseService.getClient();
+        return from(
+          supabase.from('Place').insert(place).select().single()
+        ).pipe(
+          map((response) => {
+            if (response.error) {
+              console.error(
+                '[TripsService] Error creating place:',
+                response.error
+              );
+              throw response.error;
+            }
+            return response.data as Place;
+          })
+        );
       })
     );
   }
 
+  /**
+   * Updates an existing place
+   * @param id The place ID
+   * @param updates The place data to update
+   * @returns Observable with the updated place
+   */
   updatePlace(id: number, updates: PlaceUpdate): Observable<Place> {
-    const supabase = this.supabaseService.getClient();
-    return from(
-      supabase.from('Place').update(updates).eq('id', id).select().single()
-    ).pipe(
-      map((response) => {
-        if (response.error) {
-          console.error('[TripsService] Error updating place:', response.error);
-          throw response.error;
-        }
-        return response.data as Place;
+    return this.checkOnlineOrError().pipe(
+      switchMap(() => {
+        const supabase = this.supabaseService.getClient();
+        return from(
+          supabase.from('Place').update(updates).eq('id', id).select().single()
+        ).pipe(
+          map((response) => {
+            if (response.error) {
+              console.error(
+                '[TripsService] Error updating place:',
+                response.error
+              );
+              throw response.error;
+            }
+            return response.data as Place;
+          })
+        );
       })
     );
   }
 
   // ==================== TRIP PLACES ====================
 
+  /**
+   * Returns an observable of a trip's places
+   * @param tripId The trip ID
+   * @returns Observable with all places of the trip including details
+   */
   getTripPlaces(tripId: number): Observable<TripPlaceWithDetails[]> {
-    // Create BehaviorSubject if not exists
     if (!this.tripPlacesMap.has(tripId)) {
       this.tripPlacesMap.set(
         tripId,
@@ -181,7 +314,18 @@ export class TripsService {
     return this.tripPlacesMap.get(tripId)!.asObservable();
   }
 
-  private loadTripPlaces(tripId: number): void {
+  private async loadTripPlaces(tripId: number): Promise<void> {
+    if (!this.networkService.isOnline()) {
+      const cached = await this.tripsStorage.getCachedTripPlaces(tripId);
+      const subject = this.tripPlacesMap.get(tripId);
+
+      if (subject) {
+        subject.next(cached);
+      }
+
+      return;
+    }
+
     const supabase = this.supabaseService.getClient();
     from(
       supabase
@@ -208,6 +352,7 @@ export class TripsService {
             );
             throw response.error;
           }
+
           return response.data.map((tp: any) => ({
             id: tp.id,
             trip_id: tp.trip_id,
@@ -221,6 +366,9 @@ export class TripsService {
             place_latitude: tp.Place.latitude,
             place_longitude: tp.Place.longitude,
           })) as TripPlaceWithDetails[];
+        }),
+        tap(async (tripPlaces) => {
+          await this.tripsStorage.cacheTripPlaces(tripId, tripPlaces);
         })
       )
       .subscribe({
@@ -230,111 +378,174 @@ export class TripsService {
             subject.next(tripPlaces);
           }
         },
-        error: (error) =>
-          console.error('[TripsService] Load TripPlaces error:', error),
+        error: (error) => {
+          console.error('[TripsService] Load TripPlaces error:', error);
+          this.tripsStorage
+            .getCachedTripPlaces(tripId)
+            .then((cachedTripPlaces) => {
+              if (cachedTripPlaces.length > 0) {
+                console.log(
+                  '[TripsService] ⚠️ Using cached trip places due to error'
+                );
+
+                const subject = this.tripPlacesMap.get(tripId);
+                if (subject) {
+                  subject.next(cachedTripPlaces);
+                }
+              }
+            });
+        },
       });
   }
 
+  /**
+   * Updates the place list of a trip
+   * @param tripId The trip ID
+   */
   refreshTripPlaces(tripId: number): void {
     this.loadTripPlaces(tripId);
   }
 
+  /**
+   * Creates a new trip place and schedules notifications
+   * @param tripPlace The trip place data to create
+   * @returns Observable with the created trip place
+   */
   createTripPlace(tripPlace: TripPlaceInsert): Observable<TripPlace> {
-    const supabase = this.supabaseService.getClient();
-    const data = {
-      ...tripPlace,
-      is_alert_active: tripPlace.is_alert_active ?? false,
-    };
-    return from(supabase.from('TripPlace').insert(data).select().single()).pipe(
-      map((response) => {
-        if (response.error) {
-          console.error(
-            '[TripsService] Error creating trip place:',
-            response.error
-          );
-          throw response.error;
-        }
-        return response.data as TripPlace;
-      }),
-      switchMap(async (tripPlace) => {
-        // Get full details for notification scheduling
-        const tripPlaceDetails = await this.getTripPlaceWithDetails(
-          tripPlace.id
+    return this.checkOnlineOrError().pipe(
+      switchMap(() => {
+        const supabase = this.supabaseService.getClient();
+        const data = {
+          ...tripPlace,
+          is_alert_active: tripPlace.is_alert_active ?? false,
+        };
+        return from(
+          supabase.from('TripPlace').insert(data).select().single()
+        ).pipe(
+          map((response) => {
+            if (response.error) {
+              console.error(
+                '[TripsService] Error creating trip place:',
+                response.error
+              );
+              throw response.error;
+            }
+
+            return response.data as TripPlace;
+          }),
+          switchMap(async (tripPlace) => {
+            const tripPlaceDetails = await this.getTripPlaceWithDetails(
+              tripPlace.id
+            );
+            if (tripPlaceDetails) {
+              await this.notificationService.scheduleNotificationForSpot(
+                tripPlaceDetails
+              );
+            }
+
+            return tripPlace;
+          }),
+          tap((tripPlace) => {
+            this.refreshTripPlaces(tripPlace.trip_id);
+            this.refreshTrips();
+          })
         );
-        if (tripPlaceDetails) {
-          await this.notificationService.scheduleNotificationForSpot(
-            tripPlaceDetails
-          );
-        }
-        return tripPlace;
-      }),
-      tap((tripPlace) => {
-        this.refreshTripPlaces(tripPlace.trip_id);
-        this.refreshTrips(); // Map needs trip update too
       })
     );
   }
 
+  /**
+   * Updates an existing trip place and notifications
+   * @param id The trip place ID
+   * @param updates The data to update
+   * @returns Observable with the updated trip place
+   */
   updateTripPlace(id: number, updates: TripPlaceUpdate): Observable<TripPlace> {
-    const supabase = this.supabaseService.getClient();
-    return from(
-      supabase.from('TripPlace').update(updates).eq('id', id).select().single()
-    ).pipe(
-      map((response) => {
-        if (response.error) {
-          console.error(
-            '[TripsService] Error updating trip place:',
-            response.error
-          );
-          throw response.error;
-        }
-        return response.data as TripPlace;
-      }),
-      switchMap(async (tripPlace) => {
-        // Update notification (will cancel + reschedule if needed)
-        const tripPlaceDetails = await this.getTripPlaceWithDetails(
-          tripPlace.id
+    return this.checkOnlineOrError().pipe(
+      switchMap(() => {
+        const supabase = this.supabaseService.getClient();
+        return from(
+          supabase
+            .from('TripPlace')
+            .update(updates)
+            .eq('id', id)
+            .select()
+            .single()
+        ).pipe(
+          map((response) => {
+            if (response.error) {
+              console.error(
+                '[TripsService] Error updating trip place:',
+                response.error
+              );
+              throw response.error;
+            }
+            return response.data as TripPlace;
+          }),
+          switchMap(async (tripPlace) => {
+            const tripPlaceDetails = await this.getTripPlaceWithDetails(
+              tripPlace.id
+            );
+            if (tripPlaceDetails) {
+              await this.notificationService.updateNotification(
+                tripPlaceDetails
+              );
+            }
+
+            return tripPlace;
+          }),
+          tap((tripPlace) => {
+            this.refreshTripPlaces(tripPlace.trip_id);
+            this.refreshTrips();
+          })
         );
-        if (tripPlaceDetails) {
-          await this.notificationService.updateNotification(tripPlaceDetails);
-        }
-        return tripPlace;
-      }),
-      tap((tripPlace) => {
-        this.refreshTripPlaces(tripPlace.trip_id);
-        this.refreshTrips(); // Map needs trip update too
       })
     );
   }
 
+  /**
+   * Deletes a trip place and cancels its notifications
+   * @param id The trip place ID
+   * @param tripId The trip ID
+   * @returns Observable that completes when deleted
+   */
   deleteTripPlace(id: number, tripId: number): Observable<void> {
-    const supabase = this.supabaseService.getClient();
-    return from(supabase.from('TripPlace').delete().eq('id', id)).pipe(
-      map((response) => {
-        if (response.error) {
-          console.error(
-            '[TripsService] Error deleting trip place:',
-            response.error
-          );
-          throw response.error;
-        }
-      }),
-      switchMap(async () => {
-        // Cancel notification when deleting
-        await this.notificationService.cancelNotification(id);
-      }),
-      tap(() => {
-        this.refreshTripPlaces(tripId);
-        this.refreshTrips(); // Map needs trip update too
+    return this.checkOnlineOrError().pipe(
+      switchMap(() => {
+        const supabase = this.supabaseService.getClient();
+        return from(supabase.from('TripPlace').delete().eq('id', id)).pipe(
+          switchMap((response) => {
+            if (response.error) {
+              console.error(
+                '[TripsService] Error deleting trip place:',
+                response.error
+              );
+              throw response.error;
+            }
+            return from(this.notificationService.cancelNotification(id));
+          }),
+          tap(() => {
+            this.refreshTripPlaces(tripId);
+            this.refreshTrips();
+          })
+        );
       })
     );
   }
 
-  // Reorder trip places within a trip
+  /**
+   * Reorders the places of a trip
+   * @param tripId The trip ID
+   * @param orderedTripPlaceIds Array of trip place IDs in desired order
+   * @returns Promise that resolves when reordered
+   */
   async reorderTripPlaces(
     tripId: number,
     orderedTripPlaceIds: number[]
   ): Promise<void> {
+    if (!this.networkService.isOnline()) {
+      throw new Error(ERROR_MESSAGES.OFFLINE);
+    }
     const supabase = this.supabaseService.getClient();
     const updates = orderedTripPlaceIds.map((id, index) => ({
       id,
@@ -354,12 +565,13 @@ export class TripsService {
       }
     }
 
-    // Refresh after successful reorder
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    console.log('[TripsService] Reorder complete, refreshing data');
     this.refreshTripPlaces(tripId);
-    this.refreshTrips(); // Map needs trip update too
+    this.refreshTrips();
   }
 
-  // Helper: Get trip place with details for notification scheduling
   private async getTripPlaceWithDetails(
     tripPlaceId: number
   ): Promise<TripPlaceWithDetails | null> {
@@ -399,7 +611,10 @@ export class TripsService {
     } as TripPlaceWithDetails;
   }
 
-  // Get all trip places across all trips (for notification sync)
+  /**
+   * Loads all trip places (from all trips)
+   * @returns Promise with all trip places
+   */
   async getAllTripPlaces(): Promise<TripPlaceWithDetails[]> {
     const supabase = this.supabaseService.getClient();
     const { data, error } = await supabase

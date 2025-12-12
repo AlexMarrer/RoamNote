@@ -1,5 +1,11 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ERROR_MESSAGES } from '../../shared/constants/error-messages';
+import {
+  TOAST_DURATION,
+  TOAST_POSITION,
+  TOAST_COLOR,
+} from '../../shared/constants/toast-config';
 import {
   ModalController,
   IonHeader,
@@ -19,8 +25,9 @@ import {
   IonItemOptions,
   IonItemOption,
   AlertController,
+  ToastController,
 } from '@ionic/angular/standalone';
-import { Subject, takeUntil } from 'rxjs';
+import { Subject, takeUntil, switchMap } from 'rxjs';
 import { TripsService } from '../../shared/services/trips.service';
 import { Trip } from '../../shared/models/trip.model';
 import { TripPlaceWithDetails } from '../../shared/models/trip-place.model';
@@ -31,6 +38,12 @@ import {
   closeOutline,
   createOutline,
   trashOutline,
+  arrowBackOutline,
+  enterOutline,
+  exitOutline,
+  notifications,
+  addCircle,
+  mapOutline,
 } from 'ionicons/icons';
 import { addIcons } from 'ionicons';
 
@@ -66,24 +79,50 @@ export class TripManagementModalComponent implements OnInit, OnDestroy {
   activePanel: 'trips' | 'details' = 'trips';
 
   private readonly destroy$ = new Subject<void>();
+  private readonly tripPlacesDestroy$ = new Subject<void>();
 
   constructor(
     private readonly modalController: ModalController,
     private readonly alertController: AlertController,
+    private readonly toastController: ToastController,
     private readonly tripsService: TripsService
   ) {
-    addIcons({ addOutline, closeOutline, createOutline, trashOutline });
+    addIcons({
+      closeOutline,
+      createOutline,
+      trashOutline,
+      addOutline,
+      arrowBackOutline,
+      enterOutline,
+      exitOutline,
+      notifications,
+      addCircle,
+      mapOutline,
+    });
   }
 
+  /**
+   * Initializes the trip management modal
+   * Loads all available trips
+   */
   ngOnInit(): void {
     this.loadTrips();
   }
 
+  /**
+   * Called when the component is destroyed
+   * Completes all active subscriptions
+   */
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    this.tripPlacesDestroy$.next();
+    this.tripPlacesDestroy$.complete();
   }
 
+  /**
+   * Closes the modal
+   */
   dismiss(): void {
     this.modalController.dismiss();
   }
@@ -92,25 +131,26 @@ export class TripManagementModalComponent implements OnInit, OnDestroy {
     this.tripsService
       .getTrips()
       .pipe(takeUntil(this.destroy$))
-      .subscribe({
-        next: (trips) => {
-          this.trips = trips;
-          if (trips.length > 0 && !this.selectedTrip) {
-            this.selectTrip(trips[0]);
-          }
-        },
-        error: (error) => {
-          console.error('[TripManagementModal] Error loading trips:', error);
-        },
+      .subscribe((trips) => {
+        this.trips = trips;
       });
   }
 
+  /**
+   * Selects a trip and displays its places
+   * @param trip The selected trip
+   */
   selectTrip(trip: Trip): void {
+    this.tripPlacesDestroy$.next();
+
     this.selectedTrip = trip;
     this.loadTripPlaces(trip.id);
     this.activePanel = 'details';
   }
 
+  /**
+   * Navigates back to the trip overview
+   */
   backToTrips(): void {
     this.activePanel = 'trips';
   }
@@ -118,7 +158,7 @@ export class TripManagementModalComponent implements OnInit, OnDestroy {
   private loadTripPlaces(tripId: number): void {
     this.tripsService
       .getTripPlaces(tripId)
-      .pipe(takeUntil(this.destroy$))
+      .pipe(takeUntil(this.tripPlacesDestroy$))
       .subscribe({
         next: (tripPlaces) => {
           this.tripPlaces = tripPlaces;
@@ -132,6 +172,10 @@ export class TripManagementModalComponent implements OnInit, OnDestroy {
       });
   }
 
+  /**
+   * Opens the modal to create or edit a trip
+   * @param trip Optional: The trip to edit (if available)
+   */
   async openTripModal(trip?: Trip): Promise<void> {
     const modal = await this.modalController.create({
       component: TripFormModalComponent,
@@ -157,6 +201,14 @@ export class TripManagementModalComponent implements OnInit, OnDestroy {
                 '[TripManagementModal] Error updating trip:',
                 error
               );
+              this.toastController
+                .create({
+                  message: error.message || ERROR_MESSAGES.TRIP_UPDATE_FAILED,
+                  duration: TOAST_DURATION.DEFAULT,
+                  color: TOAST_COLOR.DANGER,
+                  position: TOAST_POSITION.BOTTOM,
+                })
+                .then((toast) => toast.present());
             },
           });
       } else {
@@ -173,16 +225,32 @@ export class TripManagementModalComponent implements OnInit, OnDestroy {
                 '[TripManagementModal] Error creating trip:',
                 error
               );
+              this.toastController
+                .create({
+                  message: error.message || ERROR_MESSAGES.TRIP_CREATE_FAILED,
+                  duration: TOAST_DURATION.DEFAULT,
+                  color: TOAST_COLOR.DANGER,
+                  position: TOAST_POSITION.BOTTOM,
+                })
+                .then((toast) => toast.present());
             },
           });
       }
     }
   }
 
+  /**
+   * Opens the modal to edit a trip
+   * @param trip The trip to edit
+   */
   async editTrip(trip: Trip): Promise<void> {
     await this.openTripModal(trip);
   }
 
+  /**
+   * Deletes a trip after confirmation
+   * @param trip The trip to delete
+   */
   async deleteTrip(trip: Trip): Promise<void> {
     const alert = await this.alertController.create({
       header: 'Trip löschen',
@@ -201,17 +269,26 @@ export class TripManagementModalComponent implements OnInit, OnDestroy {
               .pipe(takeUntil(this.destroy$))
               .subscribe({
                 next: () => {
+                  // Auto-updated via BehaviorSubject
                   if (this.selectedTrip?.id === trip.id) {
                     this.selectedTrip = null;
                     this.tripPlaces = [];
                   }
-                  // Auto-updated via BehaviorSubject
                 },
                 error: (error) => {
                   console.error(
                     '[TripManagementModal] Error deleting trip:',
                     error
                   );
+                  this.toastController
+                    .create({
+                      message:
+                        error.message || ERROR_MESSAGES.TRIP_DELETE_FAILED,
+                      duration: TOAST_DURATION.DEFAULT,
+                      color: TOAST_COLOR.DANGER,
+                      position: TOAST_POSITION.BOTTOM,
+                    })
+                    .then((toast) => toast.present());
                 },
               });
           },
@@ -222,9 +299,12 @@ export class TripManagementModalComponent implements OnInit, OnDestroy {
     await alert.present();
   }
 
+  /**
+   * Opens the modal to add or edit a place
+   * @param tripPlace Optional: The place to edit (if available)
+   */
   async openPlaceModal(tripPlace?: TripPlaceWithDetails): Promise<void> {
     if (!this.selectedTrip) {
-      console.warn('[TripManagementModal] No trip selected');
       return;
     }
 
@@ -234,6 +314,8 @@ export class TripManagementModalComponent implements OnInit, OnDestroy {
         tripId: this.selectedTrip.id,
         tripPlace,
         nextVisitOrder: this.tripPlaces.length,
+        tripStartDate: this.selectedTrip.start_date,
+        tripEndDate: this.selectedTrip.end_date,
       },
     });
 
@@ -241,8 +323,7 @@ export class TripManagementModalComponent implements OnInit, OnDestroy {
 
     const { data } = await modal.onWillDismiss();
     if (data) {
-      if (data.isEdit && data.tripPlaceId) {
-        // Update existing TripPlace
+      if (data.isEdit && data.tripPlaceId && data.placeId) {
         const tripPlaceUpdates = {
           arrival_date: data.tripPlace.arrival_date,
           departure_date: data.tripPlace.departure_date,
@@ -250,62 +331,90 @@ export class TripManagementModalComponent implements OnInit, OnDestroy {
           note: data.tripPlace.note,
         };
 
+        const placeUpdates = {
+          name: data.place.name,
+          latitude: data.place.latitude,
+          longitude: data.place.longitude,
+        };
+
         this.tripsService
-          .updateTripPlace(data.tripPlaceId, tripPlaceUpdates)
-          .pipe(takeUntil(this.destroy$))
+          .updatePlace(data.placeId, placeUpdates)
+          .pipe(
+            switchMap(() =>
+              this.tripsService.updateTripPlace(
+                data.tripPlaceId,
+                tripPlaceUpdates
+              )
+            ),
+            takeUntil(this.destroy$)
+          )
           .subscribe({
             next: () => {
               // Auto-updated via BehaviorSubject
             },
             error: (error) => {
               console.error(
-                '[TripManagementModal] Error updating trip place:',
+                '[TripManagementModal] Error updating place/trip place:',
                 error
               );
+              this.toastController
+                .create({
+                  message: error.message || ERROR_MESSAGES.PLACE_UPDATE_FAILED,
+                  duration: TOAST_DURATION.DEFAULT,
+                  color: TOAST_COLOR.DANGER,
+                  position: TOAST_POSITION.BOTTOM,
+                })
+                .then((toast) => toast.present());
             },
           });
       } else {
-        // Create new Place and TripPlace
         this.tripsService
           .createPlace(data.place)
-          .pipe(takeUntil(this.destroy$))
-          .subscribe({
-            next: (newPlace) => {
+          .pipe(
+            switchMap((newPlace) => {
               const tripPlaceData = {
                 ...data.tripPlace,
                 place_id: newPlace.id,
               };
-
-              this.tripsService
-                .createTripPlace(tripPlaceData)
-                .pipe(takeUntil(this.destroy$))
-                .subscribe({
-                  next: () => {
-                    // Auto-updated via BehaviorSubject
-                  },
-                  error: (error) => {
-                    console.error(
-                      '[TripManagementModal] Error creating trip place:',
-                      error
-                    );
-                  },
-                });
+              return this.tripsService.createTripPlace(tripPlaceData);
+            }),
+            takeUntil(this.destroy$)
+          )
+          .subscribe({
+            next: () => {
+              // Auto-updated via BehaviorSubject
             },
             error: (error) => {
               console.error(
-                '[TripManagementModal] Error creating place:',
+                '[TripManagementModal] Error creating place/trip place:',
                 error
               );
+              this.toastController
+                .create({
+                  message: error.message || ERROR_MESSAGES.PLACE_CREATE_FAILED,
+                  duration: TOAST_DURATION.DEFAULT,
+                  color: TOAST_COLOR.DANGER,
+                  position: TOAST_POSITION.BOTTOM,
+                })
+                .then((toast) => toast.present());
             },
           });
       }
     }
   }
 
+  /**
+   * Opens the modal to edit a place
+   * @param tripPlace The place to edit
+   */
   async editTripPlace(tripPlace: TripPlaceWithDetails): Promise<void> {
     await this.openPlaceModal(tripPlace);
   }
 
+  /**
+   * Deletes a place from a trip after confirmation
+   * @param tripPlace The place to delete
+   */
   async deleteTripPlace(tripPlace: TripPlaceWithDetails): Promise<void> {
     if (!this.selectedTrip) {
       return;
@@ -335,6 +444,15 @@ export class TripManagementModalComponent implements OnInit, OnDestroy {
                     '[TripManagementModal] Error deleting trip place:',
                     error
                   );
+                  this.toastController
+                    .create({
+                      message:
+                        error.message || ERROR_MESSAGES.PLACE_DELETE_FAILED,
+                      duration: TOAST_DURATION.DEFAULT,
+                      color: TOAST_COLOR.DANGER,
+                      position: TOAST_POSITION.BOTTOM,
+                    })
+                    .then((toast) => toast.present());
                 },
               });
           },
@@ -345,39 +463,49 @@ export class TripManagementModalComponent implements OnInit, OnDestroy {
     await alert.present();
   }
 
+  /**
+   * Handles reordering of trips
+   * @param event CustomEvent with reorder information
+   */
   handleReorder(event: CustomEvent): void {
-    // Trips können noch nicht neu geordnet werden (keine visit_order Spalte in Trip-Tabelle)
-    // Diese Funktionalität könnte später hinzugefügt werden wenn gewünscht
     event.detail.complete();
   }
 
+  /**
+   * Handles reordering of places within a trip
+   * @param event CustomEvent with reorder information
+   */
   handlePlaceReorder(event: CustomEvent): void {
     if (!this.selectedTrip) {
       event.detail.complete();
       return;
     }
 
-    const movedItem = this.tripPlaces.splice(event.detail.from, 1)[0];
-    this.tripPlaces.splice(event.detail.to, 0, movedItem);
+    const reorderedItems = [...this.tripPlaces];
+    const movedItem = reorderedItems.splice(event.detail.from, 1)[0];
+    reorderedItems.splice(event.detail.to, 0, movedItem);
+    const orderedIds = reorderedItems.map((tp) => tp.id);
 
-    const orderedIds = this.tripPlaces.map((tp) => tp.id);
+    event.detail.complete();
 
     this.tripsService
       .reorderTripPlaces(this.selectedTrip.id, orderedIds)
       .then(() => {
-        // Success - BehaviorSubject auto-updates
+        // Auto-updated via BehaviorSubject
       })
       .catch((error) => {
         console.error(
           '[TripManagementModal] Error reordering trip places:',
           error
         );
-        // Revert optimistic update - BehaviorSubject will auto-refresh
       });
-
-    event.detail.complete();
   }
 
+  /**
+   * Formats a date for display
+   * @param dateString ISO date string
+   * @returns Formatted date (e.g., "01.01.2024")
+   */
   formatDate(dateString: string): string {
     const date = new Date(dateString);
     return date.toLocaleDateString('de-DE', {

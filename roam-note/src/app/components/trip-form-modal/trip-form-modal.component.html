@@ -2,7 +2,9 @@
   <ion-toolbar>
     <ion-title>{{ isEditMode ? "Trip bearbeiten" : "Neuer Trip" }}</ion-title>
     <ion-buttons slot="end">
-      <ion-button (click)="dismiss()">Abbrechen</ion-button>
+      <ion-button (click)="dismiss()" (keypress)="dismiss()"
+        >Abbrechen</ion-button
+      >
     </ion-buttons>
   </ion-toolbar>
 </ion-header>
@@ -45,6 +47,8 @@
               formControlName="start_date"
               presentation="date"
               [preferWheel]="true"
+              [showDefaultButtons]="true"
+              [max]="maxDate"
             >
             </ion-datetime>
           </ng-template>
@@ -61,7 +65,9 @@
               formControlName="end_date"
               presentation="date"
               [preferWheel]="true"
+              [showDefaultButtons]="true"
               [min]="tripForm.get('start_date')?.value || undefined"
+              [max]="maxDate"
             >
             </ion-datetime>
           </ng-template>
@@ -70,14 +76,15 @@
       </ion-item>
     </ion-list>
 
-    <div class="trip-form__actions">
-      <ion-button
-        expand="block"
-        (click)="save()"
-        [disabled]="!tripForm.valid || saving"
-      >
-        {{ saving ? "Speichert..." : "Speichern" }}
-      </ion-button>
-    </div>
+    <ion-button
+      class="trip-form__save-btn"
+      expand="block"
+      color="primary"
+      (click)="save()"
+      (keypress)="save()"
+      [disabled]="!tripForm.valid || saving"
+    >
+      {{ saving ? "Speichert..." : "Speichern" }}
+    </ion-button>
   </form>
 </ion-content>

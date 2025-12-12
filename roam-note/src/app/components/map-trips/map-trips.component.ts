@@ -2,7 +2,6 @@ import { CommonModule } from '@angular/common';
 import {
   Component,
   OnInit,
-  AfterViewInit,
   ViewChild,
   ElementRef,
   OnDestroy,
@@ -16,15 +15,36 @@ import {
   IonList,
   IonFabButton,
   IonIcon,
+  IonSpinner,
+  IonItemSliding,
+  IonItemOptions,
+  IonItemOption,
+  ModalController,
+  AlertController,
+  ToastController,
 } from '@ionic/angular/standalone';
 import { addIcons } from 'ionicons';
-import { locate } from 'ionicons/icons';
-import { Subject, takeUntil } from 'rxjs';
+import { locate, createOutline, trashOutline } from 'ionicons/icons';
+import {
+  Subject,
+  takeUntil,
+  debounceTime,
+  switchMap,
+  firstValueFrom,
+} from 'rxjs';
 import { GoogleMap } from '@capacitor/google-maps';
 import { Position } from '@capacitor/geolocation';
 import { environment } from '../../../environments/environment';
 import { ThemeService } from '../../shared/services/theme.service';
 import { SpotsService, Spot, Trip } from '../../shared/services/spots.service';
+import { TripsService } from '../../shared/services/trips.service';
+import { PlaceFormModalComponent } from '../place-form-modal/place-form-modal.component';
+import { ERROR_MESSAGES } from '../../shared/constants/error-messages';
+import {
+  TOAST_DURATION,
+  TOAST_COLOR,
+  TOAST_POSITION,
+} from '../../shared/constants/toast-config';
 
 const MAP_CONFIG = {
   DEFAULT_CENTER: { lat: 48.2082, lng: 16.3738 },
@@ -32,6 +52,12 @@ const MAP_CONFIG = {
   SPOT_FOCUS_ZOOM: 15,
   INIT_DELAY_MS: 300,
 } as const;
+
+interface CameraPosition {
+  latitude: number;
+  longitude: number;
+  zoom: number;
+}
 
 const DARK_MAP_STYLE = [
   { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
@@ -129,32 +155,54 @@ const DARK_MAP_STYLE = [
     IonList,
     IonFabButton,
     IonIcon,
+    IonSpinner,
+    IonItemSliding,
+    IonItemOptions,
+    IonItemOption,
   ],
 })
-export class MapTripsComponent implements OnInit, AfterViewInit, OnDestroy {
+export class MapTripsComponent implements OnInit, OnDestroy {
   @ViewChild('mapRef', { static: true })
   private readonly mapElementRef!: ElementRef<HTMLElement>;
+
+  @ViewChild(IonAccordionGroup, { static: false })
+  private readonly accordionGroup?: IonAccordionGroup;
 
   private googleMap?: GoogleMap;
   private readonly spotToMarkerMap = new Map<string, string>();
   private userPositionMarkerId?: string;
   private readonly destroy$ = new Subject<void>();
+  private isRecreatingMap = false;
+
+  private currentCameraPosition: CameraPosition = {
+    latitude: MAP_CONFIG.DEFAULT_CENTER.lat,
+    longitude: MAP_CONFIG.DEFAULT_CENTER.lng,
+    zoom: MAP_CONFIG.DEFAULT_ZOOM,
+  };
 
   trips: ReadonlyArray<Trip> = [];
   debug: string = '';
+  isMapLoading = true;
 
   constructor(
     private readonly themeService: ThemeService,
-    private readonly spotsService: SpotsService
+    private readonly spotsService: SpotsService,
+    private readonly tripsService: TripsService,
+    private readonly modalController: ModalController,
+    private readonly alertController: AlertController,
+    private readonly toastController: ToastController
   ) {
-    addIcons({ locate });
+    addIcons({ locate, createOutline, trashOutline });
   }
 
+  /**
+   * Initializes the map component
+   * Loads trips, initializes geolocation, and subscribes to theme changes
+   */
   ngOnInit() {
     this.loadTrips();
     this.spotsService.initGeolocation();
 
-    // Subscribe to user position updates early
     this.spotsService.userPosition$
       .pipe(takeUntil(this.destroy$))
       .subscribe((position) => {
@@ -163,9 +211,8 @@ export class MapTripsComponent implements OnInit, AfterViewInit, OnDestroy {
         }
       });
 
-    // Subscribe to theme changes ONCE (not in initializeMap to avoid loop)
     this.themeService.darkMode$
-      .pipe(takeUntil(this.destroy$))
+      .pipe(debounceTime(300), takeUntil(this.destroy$))
       .subscribe((isDark) => {
         if (this.googleMap) {
           this.updateMapTheme(isDark);
@@ -173,10 +220,31 @@ export class MapTripsComponent implements OnInit, AfterViewInit, OnDestroy {
       });
   }
 
-  ngAfterViewInit(): void {
+  /**
+   * Called when the view is entered
+   * Initializes the Google Map with a delay
+   */
+  public ionViewWillEnter(): void {
+    if (this.googleMap) {
+      return;
+    }
+
     setTimeout(() => this.initializeMap(), MAP_CONFIG.INIT_DELAY_MS);
   }
 
+  /**
+   * Called when the view is left
+   * Destroys the map and releases resources
+   */
+  public ionViewWillLeave(): void {
+    this.isMapLoading = true;
+    this.destroyMap();
+  }
+
+  /**
+   * Called when the component is destroyed
+   * Completes subscriptions, destroys map, and stops geolocation
+   */
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
@@ -193,12 +261,20 @@ export class MapTripsComponent implements OnInit, AfterViewInit, OnDestroy {
       }
 
       const userPosition = this.spotsService.getUserPosition();
-      const mapCenter = userPosition
-        ? {
-            lat: userPosition.coords.latitude,
-            lng: userPosition.coords.longitude,
-          }
-        : MAP_CONFIG.DEFAULT_CENTER;
+      const isFirstLoad =
+        this.currentCameraPosition.latitude === MAP_CONFIG.DEFAULT_CENTER.lat &&
+        this.currentCameraPosition.longitude === MAP_CONFIG.DEFAULT_CENTER.lng;
+
+      const mapCenter =
+        isFirstLoad && userPosition
+          ? {
+              lat: userPosition.coords.latitude,
+              lng: userPosition.coords.longitude,
+            }
+          : {
+              lat: this.currentCameraPosition.latitude,
+              lng: this.currentCameraPosition.longitude,
+            };
 
       const isDark = this.themeService.isDarkMode();
 
@@ -208,23 +284,29 @@ export class MapTripsComponent implements OnInit, AfterViewInit, OnDestroy {
         apiKey: environment.googleMapsApiKey,
         config: {
           center: mapCenter,
-          zoom: MAP_CONFIG.DEFAULT_ZOOM,
-          // Empty array for light mode, DARK_MAP_STYLE for dark mode
+          zoom: this.currentCameraPosition.zoom,
           styles: isDark ? DARK_MAP_STYLE : [],
         },
       });
 
+      await this.googleMap.setOnCameraIdleListener((event) => {
+        this.currentCameraPosition = {
+          latitude: event.latitude,
+          longitude: event.longitude,
+          zoom: event.zoom,
+        };
+      });
+
       await this.addAllMarkersToMap();
 
-      // Update user position if already available
       const currentPosition = this.spotsService.getUserPosition();
       if (currentPosition) {
         await this.updateUserPositionMarker(currentPosition);
       }
 
-      console.log('[MapTrips] Map initialized successfully');
+      this.isMapLoading = false;
     } catch (error) {
-      console.error('[MapTrips] Failed to initialize map:', error);
+      this.isMapLoading = false;
       throw error;
     }
   }
@@ -235,20 +317,27 @@ export class MapTripsComponent implements OnInit, AfterViewInit, OnDestroy {
       .pipe(takeUntil(this.destroy$))
       .subscribe({
         next: (trips) => {
+          const previousTrips = this.trips;
           this.trips = trips;
+
+          if (this.accordionGroup && previousTrips.length === trips.length) {
+            setTimeout(() => {
+              if (this.accordionGroup) {
+                this.accordionGroup.value = undefined;
+              }
+            }, 100);
+          }
+
           if (this.googleMap) {
             this.addAllMarkersToMap();
           }
         },
-        error: (error) => {
-          console.error('[MapTrips] Error loading trips:', error);
-        },
+        error: () => {},
       });
   }
 
   private async addAllMarkersToMap(): Promise<void> {
     if (!this.googleMap) {
-      console.warn('[MapTrips] Cannot add markers: Map not initialized');
       return;
     }
 
@@ -262,118 +351,108 @@ export class MapTripsComponent implements OnInit, AfterViewInit, OnDestroy {
   private async addMarkerForSpot(spot: Spot): Promise<void> {
     if (!this.googleMap) return;
 
-    try {
-      const markerId = await this.googleMap.addMarker({
-        coordinate: {
-          lat: spot.latitude,
-          lng: spot.longitude,
-        },
-        snippet: `${spot.name}${
-          spot.description ? '\n' + spot.description : ''
-        }`,
-      });
+    const markerId = await this.googleMap.addMarker({
+      coordinate: {
+        lat: spot.latitude,
+        lng: spot.longitude,
+      },
+      snippet: `${spot.name}${spot.description ? '\n' + spot.description : ''}`,
+    });
 
-      this.spotToMarkerMap.set(spot.id, markerId);
-    } catch (error) {
-      console.error(
-        `[MapTrips] Failed to add marker for spot ${spot.id}:`,
-        error
-      );
-    }
+    this.spotToMarkerMap.set(spot.id, markerId);
   }
 
+  /**
+   * Handles clicks on places
+   * Centers the camera on the selected place
+   * @param spot The clicked place
+   */
   async onSpotClick(spot: Spot): Promise<void> {
     if (!this.googleMap) {
-      console.warn('[MapTrips] Cannot focus spot: Map not initialized');
       return;
     }
 
-    try {
-      await this.googleMap.setCamera({
-        coordinate: {
-          lat: spot.latitude,
-          lng: spot.longitude,
-        },
-        zoom: MAP_CONFIG.SPOT_FOCUS_ZOOM,
-        animate: true,
-      });
-
-      console.log(`[MapTrips] Focused on spot: ${spot.name}`);
-    } catch (error) {
-      console.error(`[MapTrips] Failed to focus on spot ${spot.id}:`, error);
-    }
+    await this.googleMap.setCamera({
+      coordinate: {
+        lat: spot.latitude,
+        lng: spot.longitude,
+      },
+      zoom: MAP_CONFIG.SPOT_FOCUS_ZOOM,
+      animate: true,
+    });
   }
 
-  onAccordionChange(event: CustomEvent): void {
-    // Could be used to auto-focus map on trip selection
+  /**
+   * Handles accordion changes
+   * Placeholder for future functionality
+   */
+  onAccordionChange(): void {}
+
+  /**
+   * TrackBy function for trip lists
+   * @param _index Index of the element
+   * @param trip The trip object
+   * @returns Unique ID of the trip
+   */
+  trackByTripId(_index: number, trip: Trip): string {
+    return trip.id;
   }
 
+  /**
+   * TrackBy function for place lists
+   * @param _index Index of the element
+   * @param spot The place object
+   * @returns Unique ID of the place
+   */
+  trackBySpotId(_index: number, spot: Spot): string {
+    return spot.id;
+  }
+
+  /**
+   * Centers the camera on the current user position
+   */
   async centerOnUserPosition(): Promise<void> {
     const position = this.spotsService.getUserPosition();
     if (!position || !this.googleMap) {
-      console.warn('[MapTrips] Cannot center: No position or map unavailable');
       return;
     }
 
-    try {
-      await this.googleMap.setCamera({
-        coordinate: {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        },
-        zoom: MAP_CONFIG.SPOT_FOCUS_ZOOM,
-        animate: true,
-      });
-    } catch (error) {
-      console.error('[MapTrips] Failed to center on user position:', error);
-    }
+    await this.googleMap.setCamera({
+      coordinate: {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      },
+      zoom: MAP_CONFIG.SPOT_FOCUS_ZOOM,
+      animate: true,
+    });
   }
 
   private async updateMapTheme(isDark: boolean): Promise<void> {
-    if (!this.googleMap) return;
+    if (!this.googleMap || this.isRecreatingMap) return;
 
-    try {
-      console.log(
-        `[MapTrips] Theme changed to ${
-          isDark ? 'dark' : 'light'
-        }, recreating map...`
-      );
-
-      // Destroy and recreate map with new theme
-      this.destroyMap();
-      await this.initializeMap();
-    } catch (error) {
-      console.error('[MapTrips] Failed to update map theme:', error);
-    }
+    this.isRecreatingMap = true;
+    this.destroyMap();
+    await this.initializeMap();
+    this.isRecreatingMap = false;
   }
 
   private async updateUserPositionMarker(position: Position): Promise<void> {
     if (!this.googleMap) {
-      this.debug =
-        '[MapTrips] Cannot update user position marker: Map not initialized';
       return;
     }
 
-    try {
-      if (this.userPositionMarkerId) {
-        await this.googleMap.removeMarker(this.userPositionMarkerId);
-      }
-
-      this.userPositionMarkerId = await this.googleMap.addMarker({
-        coordinate: {
-          lat: position.coords.latitude,
-          lng: position.coords.longitude,
-        },
-        title: 'Dein Standort',
-        iconUrl: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
-      });
-
-      this.debug = '[MapTrips] User position marker updated';
-      console.log('[MapTrips] User position marker updated');
-    } catch (error) {
-      this.debug = '[MapTrips] Failed to update user position marker';
-      console.error('[MapTrips] Failed to update user position:', error);
+    if (this.userPositionMarkerId) {
+      await this.googleMap.removeMarker(this.userPositionMarkerId);
     }
+
+    this.userPositionMarkerId = await this.googleMap.addMarker({
+      coordinate: {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      },
+      title: 'Dein Standort',
+      iconUrl: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png',
+    });
   }
 
   private destroyMap(): void {
@@ -382,7 +461,133 @@ export class MapTripsComponent implements OnInit, AfterViewInit, OnDestroy {
       this.googleMap = undefined;
       this.spotToMarkerMap.clear();
       this.userPositionMarkerId = undefined;
-      console.log('[MapTrips] Map destroyed');
     }
+  }
+
+  /**
+   * Opens the modal to edit a place
+   * @param spot The place to edit
+   * @param trip The trip the place belongs to
+   */
+  async editSpot(spot: Spot, trip: Trip): Promise<void> {
+    const trips = await firstValueFrom(this.tripsService.getTrips());
+    const dbTrip = trips?.find((t) => t.id.toString() === trip.id);
+    if (!dbTrip) return;
+
+    const tripPlaces = await firstValueFrom(
+      this.tripsService.getTripPlaces(dbTrip.id)
+    );
+    const tripPlace = tripPlaces?.find((tp) => tp.id.toString() === spot.id);
+    if (!tripPlace) return;
+
+    const modal = await this.modalController.create({
+      component: PlaceFormModalComponent,
+      componentProps: {
+        tripId: dbTrip.id,
+        tripPlace,
+        nextVisitOrder: tripPlaces?.length || 0,
+        tripStartDate: dbTrip.start_date,
+        tripEndDate: dbTrip.end_date,
+      },
+    });
+
+    await modal.present();
+
+    const { data } = await modal.onWillDismiss();
+    if (data?.isEdit && data?.tripPlaceId && data?.placeId) {
+      const tripPlaceUpdates = {
+        arrival_date: data.tripPlace.arrival_date,
+        departure_date: data.tripPlace.departure_date,
+        is_alert_active: data.tripPlace.is_alert_active,
+        note: data.tripPlace.note,
+      };
+
+      const placeUpdates = {
+        name: data.place.name,
+        latitude: data.place.latitude,
+        longitude: data.place.longitude,
+      };
+
+      this.tripsService
+        .updatePlace(data.placeId, placeUpdates)
+        .pipe(
+          switchMap(() =>
+            this.tripsService.updateTripPlace(
+              data.tripPlaceId,
+              tripPlaceUpdates
+            )
+          ),
+          takeUntil(this.destroy$)
+        )
+        .subscribe({
+          next: () => {},
+          error: (error) => {
+            this.toastController
+              .create({
+                message: error.message || ERROR_MESSAGES.PLACE_UPDATE_FAILED,
+                duration: TOAST_DURATION.DEFAULT,
+                color: TOAST_COLOR.DANGER,
+                position: TOAST_POSITION.BOTTOM,
+              })
+              .then((toast) => toast.present());
+          },
+        });
+    }
+  }
+
+  /**
+   * Deletes a place after confirmation
+   * @param spot The place to delete
+   * @param trip The trip the place belongs to
+   */
+  async deleteSpot(spot: Spot, trip: Trip): Promise<void> {
+    const alert = await this.alertController.create({
+      header: 'Ort löschen',
+      message: `Möchtest du "${spot.name}" wirklich löschen?`,
+      buttons: [
+        {
+          text: 'Abbrechen',
+          role: 'cancel',
+        },
+        {
+          text: 'Löschen',
+          role: 'destructive',
+          handler: async () => {
+            const trips = await firstValueFrom(this.tripsService.getTrips());
+            const dbTrip = trips?.find((t) => t.id.toString() === trip.id);
+            if (!dbTrip) return;
+
+            this.tripsService
+              .deleteTripPlace(Number(spot.id), dbTrip.id)
+              .pipe(takeUntil(this.destroy$))
+              .subscribe({
+                next: () => {
+                  this.toastController
+                    .create({
+                      message: 'Ort erfolgreich gelöscht',
+                      duration: TOAST_DURATION.SHORT,
+                      color: TOAST_COLOR.SUCCESS,
+                      position: TOAST_POSITION.BOTTOM,
+                    })
+                    .then((toast) => toast.present());
+                },
+                error: (error) => {
+                  this.toastController
+                    .create({
+                      message:
+                        error.message || ERROR_MESSAGES.PLACE_DELETE_FAILED,
+                      duration: TOAST_DURATION.DEFAULT,
+                      color: TOAST_COLOR.DANGER,
+                      position: TOAST_POSITION.BOTTOM,
+                    })
+                    .then((toast) => toast.present());
+                },
+              });
+          },
+        },
+      ],
+    });
+
+    await alert.present();
   }
 }

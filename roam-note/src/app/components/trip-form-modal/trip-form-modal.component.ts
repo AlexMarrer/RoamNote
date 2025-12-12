@@ -55,12 +55,19 @@ export class TripFormModalComponent implements OnInit {
   tripForm!: FormGroup;
   isEditMode = false;
   saving = false;
+  maxDate = new Date(new Date().setFullYear(new Date().getFullYear() + 30))
+    .toISOString()
+    .split('T')[0];
 
   constructor(
     private readonly modalController: ModalController,
     private readonly formBuilder: FormBuilder
   ) {}
 
+  /**
+   * Initializes the trip form modal
+   * Sets edit mode and initializes the form
+   */
   ngOnInit(): void {
     this.isEditMode = !!this.trip;
     this.initializeForm();
@@ -78,10 +85,17 @@ export class TripFormModalComponent implements OnInit {
     });
   }
 
+  /**
+   * Closes the modal without saving changes
+   */
   dismiss(): void {
     this.modalController.dismiss();
   }
 
+  /**
+   * Saves the trip and closes the modal
+   * Validates the form and formats date values
+   */
   save(): void {
     if (!this.tripForm.valid) {
       return;

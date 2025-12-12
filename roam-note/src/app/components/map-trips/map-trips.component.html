@@ -1,8 +1,15 @@
 <div class="map-trips">
   <div class="map-trips__map-layer">
+    <!-- Loading Spinner -->
+    <div *ngIf="isMapLoading" class="map-trips__loading">
+      <ion-spinner name="crescent" color="primary"></ion-spinner>
+      <p class="map-trips__loading-text">Karte wird geladen...</p>
+    </div>
+
     <capacitor-google-map
       #mapRef
       class="map-trips__map-element"
+      [class.map-trips__map-element--loading]="isMapLoading"
     ></capacitor-google-map>
 
     <!-- Location FAB Button -->
@@ -20,10 +27,10 @@
   <div class="map-trips__trips-panel">
     <ion-accordion-group
       class="map-trips__accordion-group"
-      (ionChange)="onAccordionChange($event)"
+      (ionChange)="onAccordionChange()"
     >
       <ion-accordion
-        *ngFor="let trip of trips"
+        *ngFor="let trip of trips; trackBy: trackByTripId"
         [value]="trip.id"
         class="map-trips__trip"
       >
@@ -38,21 +45,47 @@
 
         <div class="map-trips__trip-content ion-padding" slot="content">
           <ion-list class="map-trips__spots-list">
-            <ion-item
-              *ngFor="let spot of trip.spots"
-              button
-              detail="true"
-              class="map-trips__spot"
-              (click)="onSpotClick(spot)"
-              (keydown.enter)="onSpotClick(spot)"
+            <ion-item-sliding
+              class="map-trips__sliding"
+              *ngFor="let spot of trip.spots; trackBy: trackBySpotId"
             >
-              <ion-label>
-                <h3 class="map-trips__spot-name">{{ spot.name }}</h3>
-                <p *ngIf="spot.description" class="map-trips__spot-description">
-                  {{ spot.description }}
-                </p>
-              </ion-label>
-            </ion-item>
+              <ion-item
+                class="map-trips__sliding-item map-trips__spot"
+                button
+                detail="true"
+                (click)="onSpotClick(spot)"
+                (keydown.enter)="onSpotClick(spot)"
+              >
+                <ion-label>
+                  <h3 class="map-trips__spot-name">{{ spot.name }}</h3>
+                  <p
+                    *ngIf="spot.description"
+                    class="map-trips__spot-description"
+                  >
+                    {{ spot.description }}
+                  </p>
+                </ion-label>
+              </ion-item>
+
+              <ion-item-options side="end" class="map-trips__sliding-options">
+                <ion-item-option
+                  class="map-trips__sliding-option"
+                  color="primary"
+                  (click)="editSpot(spot, trip)"
+                  (keypress)="editSpot(spot, trip)"
+                >
+                  <ion-icon slot="icon-only" name="create-outline"></ion-icon>
+                </ion-item-option>
+                <ion-item-option
+                  class="map-trips__sliding-option"
+                  color="danger"
+                  (click)="deleteSpot(spot, trip)"
+                  (keypress)="deleteSpot(spot, trip)"
+                >
+                  <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+                </ion-item-option>
+              </ion-item-options>
+            </ion-item-sliding>
           </ion-list>
         </div>
       </ion-accordion>
