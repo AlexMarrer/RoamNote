@@ -15,6 +15,10 @@ export class SupabaseService {
     );
   }
 
+  /**
+   * Returns the Supabase client
+   * @returns The configured Supabase client
+   */
   getClient(): SupabaseClient {
     return this.supabase;
   }
