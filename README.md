@@ -81,6 +81,19 @@ DiaryNote (id, content, spotIds[], createdAt)
 ```bash
 cd roam-note
 npm install
+```
+
+**⚠️ WICHTIG: API Key Konfiguration**
+
+```bash
+cd android
+cp gradle.properties.example gradle.properties
+# Bearbeite gradle.properties und füge deinen Google Maps API Key ein
+```
+
+Siehe `SECURITY_SETUP.md` für Details zur API Key Verwaltung.
+
+```bash
 ionic serve  # Web Development
 ionic cap run android  # Android Build
 ```
