@@ -1,14 +1,81 @@
+@use "sass:map";
 @use "../abstract/variables/view";
 
 // Media Query Mixins
-@mixin media-handy {
-  @media (max-width: #{map-get(view.$size-map, "handy")}) {
+@mixin media-mobile-xs {
+  @media (max-width: #{map.get(view.$size-map, "mobile-xs")}) {
+    @content;
+  }
+}
+
+@mixin media-mobile {
+  @media (max-width: #{map.get(view.$size-map, "mobile")}) {
+    @content;
+  }
+}
+
+@mixin media-tablet {
+  @media (max-width: #{map.get(view.$size-map, "tablet")}) {
+    @content;
+  }
+}
+
+@mixin media-laptop {
+  @media (max-width: #{map.get(view.$size-map, "laptop")}) {
+    @content;
+  }
+}
+
+@mixin media-desktop {
+  @media (max-width: #{map.get(view.$size-map, "desktop")}) {
+    @content;
+  }
+}
+
+@mixin media-mobile-up {
+  @media (min-width: #{map.get(view.$size-map, "mobile-xs") + 1px}) {
     @content;
   }
 }
 
 @mixin media-tablet-up {
-  @media (min-width: #{map-get(view.$size-map, "handy") + 1px}) {
+  @media (min-width: #{map.get(view.$size-map, "mobile") + 1px}) {
     @content;
+  }
+}
+
+@mixin media-laptop-up {
+  @media (min-width: #{map.get(view.$size-map, "tablet") + 1px}) {
+    @content;
+  }
+}
+
+@mixin media-desktop-up {
+  @media (min-width: #{map.get(view.$size-map, "laptop") + 1px}) {
+    @content;
+  }
+}
+
+@mixin swipe-actions {
+  &__sliding {
+    position: relative;
+  }
+
+  &__sliding-item {
+    position: relative;
+    z-index: 2;
+  }
+
+  &__sliding-options {
+    border-radius: 0;
+  }
+
+  &__sliding-option {
+    border-radius: 0;
+    min-height: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }
