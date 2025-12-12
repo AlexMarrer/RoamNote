@@ -44,22 +44,18 @@ ion-item {
 body.native-map-page {
   background: transparent !important;
 
-  html,
   ion-app,
   ion-router-outlet {
     background: transparent !important;
   }
 }
 
-// Dark Mode für native Plattformen
-body.native-map-page.dark {
-  --ion-background-color: transparent !important;
+// Dark Mode: html gets ion-palette-dark class, not body
+html.ion-palette-dark body.native-map-page {
   background: transparent !important;
-}
 
-@media (prefers-color-scheme: dark) {
-  body.native-map-page {
-    --ion-background-color: transparent !important;
+  ion-app,
+  ion-router-outlet {
     background: transparent !important;
   }
 }
