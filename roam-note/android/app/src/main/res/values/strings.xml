@@ -4,4 +4,9 @@
     <string name="title_activity_main">roam-note</string>
     <string name="package_name">io.ionic.starter</string>
     <string name="custom_url_scheme">io.ionic.starter</string>
+    
+    <!-- Local Notifications -->
+    <string name="local_notification_channel_id">roam_note_trips</string>
+    <string name="local_notification_channel_name">Trip Erinnerungen</string>
+    <string name="local_notification_channel_description">Benachrichtigungen für bevorstehende Reiseziele</string>
 </resources>
