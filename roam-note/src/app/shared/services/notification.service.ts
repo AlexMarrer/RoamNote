@@ -17,7 +17,7 @@ interface NotificationSchedule {
 })
 export class NotificationService {
   // DEBUG MODE: Set to true for 2-minute testing, false for production (24h)
-  private readonly DEBUG_MODE = true;
+  private readonly DEBUG_MODE = false;
   private readonly NOTIFICATION_DELAY_HOURS = this.DEBUG_MODE ? 0.033 : 24; // 2min vs 24h
   private readonly NOTIFICATION_HOUR = 9; // 09:00 AM for production notifications
 
@@ -51,8 +51,8 @@ export class NotificationService {
   }
 
   /**
-   * Request notification permissions from user
-   * Returns true if granted, false otherwise
+   * Requests notification permissions from the user
+   * @returns true if granted, false otherwise
    */
   async requestPermissions(): Promise<boolean> {
     try {
@@ -68,7 +68,8 @@ export class NotificationService {
   }
 
   /**
-   * Check if notifications are enabled
+   * Checks if notifications are enabled
+   * @returns true if notifications are allowed
    */
   async checkPermissions(): Promise<boolean> {
     try {
@@ -81,7 +82,9 @@ export class NotificationService {
   }
 
   /**
-   * Schedule notification for a trip place (24h before arrival or 2min for testing)
+   * Schedules a notification for a trip place
+   * DEBUG: 10 seconds before arrival, PRODUCTION: 24h before arrival at 09:00 AM
+   * @param tripPlace The trip place for which to schedule the notification
    */
   async scheduleNotificationForSpot(
     tripPlace: TripPlaceWithDetails
@@ -154,26 +157,25 @@ export class NotificationService {
   /**
    * Calculate when notification should be triggered
    * DEBUG: 2 minutes from now
-   * PRODUCTION: 24h before arrival at 09:00 AM
+   * PRODUCTION: 1 day before arrival at 09:00 AM
    */
   private calculateNotificationDate(arrivalDateString: string): Date {
     if (this.DEBUG_MODE) {
-      // Testing mode: 2 minutes from now
       const now = new Date();
-      const debugDate = new Date(now.getTime() + 10 * 1000); // 10 seconds
-      return debugDate;
+      const delayMs = this.NOTIFICATION_DELAY_HOURS * 60 * 60 * 1000;
+      return new Date(now.getTime() + delayMs);
     } else {
-      // Production mode: 24h before arrival at 09:00 AM
-      const arrivalDate = new Date(arrivalDateString);
-      const notificationDate = new Date(arrivalDate);
+      const notificationDate = new Date(arrivalDateString);
       notificationDate.setDate(notificationDate.getDate() - 1); // 1 day before
       notificationDate.setHours(this.NOTIFICATION_HOUR, 0, 0, 0); // 09:00 AM
+
       return notificationDate;
     }
   }
 
   /**
-   * Cancel notification for a specific trip place
+   * Cancels the notification for a trip place
+   * @param tripPlaceId The trip place ID
    */
   async cancelNotification(tripPlaceId: number): Promise<void> {
     try {
@@ -191,7 +193,8 @@ export class NotificationService {
   }
 
   /**
-   * Update notification (cancel old, schedule new)
+   * Updates a notification (cancels old, schedules new)
+   * @param tripPlace The updated trip place
    */
   async updateNotification(tripPlace: TripPlaceWithDetails): Promise<void> {
     // Cancel existing notification first
@@ -204,8 +207,9 @@ export class NotificationService {
   }
 
   /**
-   * Sync all notifications with current trip places
-   * Called on app startup to clean up old notifications and reschedule active ones
+   * Synchronizes all notifications with current trip places
+   * Called on app startup to clean up old notifications
+   * @param tripPlaces Array of all trip places
    */
   async syncAllNotifications(
     tripPlaces: TripPlaceWithDetails[]
@@ -248,7 +252,7 @@ export class NotificationService {
   }
 
   /**
-   * Cancel all notifications (useful for debugging)
+   * Cancels all notifications (useful for debugging)
    */
   async cancelAllNotifications(): Promise<void> {
     try {
@@ -269,7 +273,8 @@ export class NotificationService {
   }
 
   /**
-   * Get all pending notifications (for debugging)
+   * Returns all pending notifications (for debugging)
+   * @returns Promise with pending notifications
    */
   async getPendingNotifications(): Promise<PendingResult> {
     return LocalNotifications.getPending();
