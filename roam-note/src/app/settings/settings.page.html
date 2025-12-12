@@ -1,3 +1,23 @@
 <app-header title="Settings"></app-header>
 
-<ion-content [fullscreen]="true"> </ion-content>
+<ion-content [fullscreen]="true">
+  <div class="settings">
+    <div class="settings__section">
+      <h2 class="settings__section-title">Datenverwaltung</h2>
+      <p class="settings__section-description">
+        Lösche alle lokal gespeicherten Daten (Diary-Einträge, Orte und Trips).
+        Diese Aktion kann nicht rückgängig gemacht werden.
+      </p>
+      <ion-button
+        class="settings__delete-button"
+        expand="block"
+        color="danger"
+        (click)="deleteAllData()"
+        (keypress)="deleteAllData()"
+      >
+        <ion-icon slot="start" name="trash-outline"></ion-icon>
+        Alle Daten löschen
+      </ion-button>
+    </div>
+  </div>
+</ion-content>

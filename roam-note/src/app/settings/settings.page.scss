@@ -1,0 +1,40 @@
+@use "../shared/styles/helpers/color";
+@use "../shared/styles/helpers/mixins";
+
+.settings {
+  padding: 1rem;
+
+  &__section {
+    margin-bottom: 2rem;
+  }
+
+  &__section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: color.get(grey, 900);
+  }
+
+  &__section-description {
+    font-size: 0.875rem;
+    color: color.get(grey, 600);
+    margin-bottom: 1rem;
+    line-height: 1.5;
+  }
+
+  &__delete-button {
+    margin-top: 1rem;
+  }
+}
+
+:host-context(html.ion-palette-dark) {
+  .settings {
+    &__section-title {
+      color: color.get(grey, 100);
+    }
+
+    &__section-description {
+      color: color.get(grey, 400);
+    }
+  }
+}
